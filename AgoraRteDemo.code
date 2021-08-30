@@ -1,0 +1,107 @@
+#exec(util.getFileText('AgoraCodePart1.py'))
+self.pushText = '''hello agora'''
+
+optionsDict = {
+        "setDragPoint": {
+            "dragSrcPoint": {"x": 0.1, "y": 0.1},
+            "dragDstPoint": {"x": 0.2, "y": 0.1},
+            "dragFinished": 1,
+        },
+        "assistLine": 1,
+        "mirror": 0,
+        "resetDragPoints": 0,
+    }
+optionsDict2 = {
+        "setDragPoints": {
+            "dragSrcPoints": [0.011397,0.086478,0.064092,0.977778,0.988468,0.116797,0.867718,0.977778],
+            "dragDstPoints": [0.185000,0.100000,0.185000,0.900000,0.815000,0.100000,0.815000,0.900000]
+        },
+        "assistLine": 1,
+    }
+
+remoteUid=111
+channelName=self.channelNameEdit.text().strip()
+uid = int(self.uidEdit.text())
+token = self.tokenEdit.text().strip()
+rtcConnection=agsdk.RtcConnection(channelName, int(self.uidExEdit.text()))
+#rtcConnection=agsdk.RtcConnection('', 0)
+
+#self.rtcEngine.takeSnapshot(channelName, uid, 'd:/snap.jpg')
+#self.rtcEngine.setContentInspect(1, 1)
+
+userAccount='hello'
+#self.rtcEngine.registerLocalUserAccount(self.appId, userAccount)
+#self.rtcEngine.joinChannelWithUserAccount(channelName, userAccount, '')
+
+#self.rtcEngine.loadExtensionProvider('libagora_segmentation_extension.dll')
+#self.rtcEngine.enableExtension('agora', 'beauty', True, 0)
+
+#self.rtcEngine.muteLocalAudioStream(0)
+#self.rtcEngine.muteLocalVideoStream(0)
+
+
+options = agsdk.ChannelMediaOptions(publishCameraTrack=True, publishAudioTrack=True)
+#ret = self.rtcEngine.joinChannel2(channelName, uid, token, options); self.checkSDKResult(ret)
+
+backgroundSource = agsdk.VirtualBackgroundSource()
+backgroundSource.backgroundSourceType = 1 # 1, 2, 3
+backgroundSource.color = 0xFFFFFF
+backgroundSource.source = r'd:\test.jpg'
+backgroundSource.blurDegree = 3 # 1, 2, 3
+backgroundSource.modelType = 0 # 0, 2
+backgroundSource.preferVelocity = 1
+backgroundSource.greenCapacity = 0.5
+segProperty = agorasdk.SegmentationProperty()
+segProperty.modelType = 0 # 0, 2
+segProperty.preferVelocity = 1
+segProperty.greenCapacity = 0.5
+#ret=self.rtcEngine.enableVirtualBackground(True, backgroundSource, segProperty, sourceType=2); self.checkSDKResult(ret)
+#ret=self.rtcEngine.enableVirtualBackground(False, backgroundSource, segProperty, sourceType=2); self.checkSDKResult(ret)
+
+#self.setPushVideoFrameFromFile(r'd:\Downloads\capture320x240_1.yuv', videoFormat=1, width=320, height=240, fps=10)
+#self.setPushVideoFrameFromFile('')
+
+#self.rtcEngine.setExternalVideoSource(True)
+#self.rtcEngine.pushVideoFrame(640, 360)
+#self.rtcEngine.pushVideoFrameEx(self.rtcConnection, 640, 360)
+
+#self.rtcEngine.setParameters('{"rtc.video.minbitrate_ratio": "0.8"}')
+#self.rtcEngine.setParameters('{"rtc.video.trapezoid_central_ratio_limit": 0.5, "rtc.video.trapezoid_move_ratio_limit": 0.35}')
+#self.rtcEngine.enableLocalTrapezoidCorrection(enabled=True, sourceType=0)
+#self.ret=self.rtcEngine.setLocalTrapezoidCorrectionOptions(options=optionsDict, sourceType=0); self.codeDlg.outputEdit.appendPlainText(f'\n{self.ret}\n')
+
+#time.sleep(0.2)
+#self.ret=self.rtcEngine.getLocalTrapezoidCorrectionOptions(sourceType=0); self.codeDlg.outputEdit.appendPlainText(f'\n{self.ret}\n')
+
+#self.rtcEngine.enableRemoteTrapezoidCorrection(uid=remoteUid, enabled=True)
+#self.rtcEngine.setRemoteTrapezoidCorrectionOptions(uid=remoteUid, options=optionsDict)
+#self.rtcEngine.enableRemoteTrapezoidCorrectionEx(uid=remoteUid, enabled=True, connection=rtcConnection)
+#self.rtcEngine.setRemoteTrapezoidCorrectionOptionsEx(uid=remoteUid, options=optionsDict, connection=rtcConnection)
+#time.sleep(0.2)
+#self.ret=self.rtcEngine.getRemoteTrapezoidCorrectionOptions(uid=remoteUid); self.codeDlg.outputEdit.appendPlainText(f'\n{self.ret}\n')
+#self.rtcEngine.applyTrapezoidCorrectionToRemote(uid=remoteUid, enabled=True)
+#self.rtcEngine.applyTrapezoidCorrectionToRemoteEx(uid=remoteUid, enabled=True, connection=rtcConnection)
+
+#self.rtcEngine.enableExtension('agora', 'beauty', True, 2) # 2=1st, 3=2nd
+#self.rtcEngine.setExtensionProperty('agora', 'beauty', 'lowlight_enhance_option', '{"enable": 1, "mode": 0, "level": 2}')
+#self.rtcEngine.enableBrightnessCorrection(enabled=True, mode=0, sourceType=0)
+#self.rtcEngine.applyBrightnessCorrectionToRemote(uid=remoteUid, enabled=1, mode=0)
+
+#self.rtcEngine.setupLocalVideo(agsdk.VideoCanvas(uid=0, view=0, mirrorMode=1, renderMode=2, sourceType=0))
+#self.rtcEngine.setupRemoteVideo(videoCanvas=agsdk.VideoCanvas(uid=remoteUid, view=0x0, mirrorMode=2))
+#self.rtcEngine.setupRemoteVideoEx(videoCanvas=agsdk.VideoCanvas(uid=remoteUid, view=0x0, mirrorMode=2), connection=rtcConnection)
+#self.rtcEngine.setLocalVideoMirrorMode(mirrorMode=1)
+#self.rtcEngine.setLocalRenderMode(renderMode=2, mirrorMode=1, sourceType=0)
+#self.rtcEngine.muteRemoteVideoStream(uid=remoteUid, mute=True)
+
+#self.rtcEngine.applyVideoEncoderMirrorToRemote(uid=remoteUid, mirrorMode=1)
+#self.rtcEngine.applyVideoEncoderMirrorToRemoteEx(uid=remoteUid, mirrorMode=1, connection=rtcConnection)
+
+#self.rtcEngine.setCameraDeviceOrientation(orientation=180, sourceType=0)
+#self.rtcEngine.applyVideoOrientationToRemote(uid=remoteUid, orientation=180)
+#self.rtcEngine.applyVideoOrientationToRemoteEx(uid=remoteUid, orientation=180, connection=rtcConnection)
+
+#self.videoConfigEx.mirrorMode=1
+#self.rtcEngine.setVideoEncoderConfigurationEx(self.videoConfigEx, rtcConnection)
+
+#self.rtcEngine.startScreenCaptureByWindowId(0x00100756, agsdk.Rectangle(0,0,640,480), agsdk.ScreenCaptureParameters(640,480,15,0))
