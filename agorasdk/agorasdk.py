@@ -40,6 +40,10 @@ if sys.stdout:
         def __init__(self, fmt=None, datefmt=None, style='%', validate=True):
             super(MyFormatter, self).__init__(fmt, datefmt, style, validate)
 
+    class MyHandler(log.Handler):
+        def emit(self, record):
+            print('custom handler called with\n', record)
+
     sh = log.StreamHandler(sys.stdout)
     sh.setFormatter(MyFormatter('%(asctime)s %(filename)s L%(lineno)d T%(thread)d %(funcName)s: %(message)s'))
     log.getLogger().addHandler(sh)
@@ -50,7 +54,7 @@ def isPy38OrHigher():
 
 
 def supportTrapzezoidCorrection() -> bool:
-    return SdkVerson.startswith('3.6.200.100')
+    return SdkVerson.startswith('3.6.200.10')
 
 
 class StopWatch():
@@ -70,6 +74,19 @@ class StopWatch():
 
 
 LastAPICall = ''
+LogCallbacks = []
+
+
+def addLogCallback(func: Callable[[str], None]) -> None:
+    LogCallbacks.append(func)
+
+
+def removeLogCallback(func: Callable[[str], None]) -> None:
+    LogCallbacks.remove(func)
+
+
+def clearLogCallbacks() -> None:
+    LogCallbacks.clear()
 
 
 def MeasureTime(func):
@@ -85,10 +102,15 @@ def MeasureTime(func):
                 argsstr = keystr
         LastAPICall = f'{func.__name__}({argsstr})'
         log.info(LastAPICall)
+        for callback in LogCallbacks:
+            callback(LastAPICall)
         start = time.monotonic()
         ret = func(*args, **kwargs)
         costTime = time.monotonic() - start
-        log.info(f'{func.__name__} returns {ret}, costTime={costTime:.3} s')
+        logStr = f'{func.__name__} returns {ret}, costTime={costTime:.3} s'
+        log.info(logStr)
+        for callback in LogCallbacks:
+            callback(logStr)
         return ret
     return wrapper
 
@@ -424,14 +446,16 @@ class Rectangle():
 
 
 class ScreenCaptureParameters():
-    def __init__(self, width: int, height: int, fps: int = 15, bitrate: int = 0):
+    def __init__(self, width: int, height: int, fps: int = 15, bitrate: int = 0, excludeWindowList: List[int] = None):
         self.width = width
         self.height = height
         self.fps = fps
         self.bitrate = bitrate
+        self.excludeWindowList = excludeWindowList
 
     def __str__(self) -> str:
-        return f'{self.__class__.__name__}(width={self.width}, height={self.height},fps={self.fps}, bitrate={self.bitrate})'
+        return f'{self.__class__.__name__}(width={self.width}, height={self.height},fps={self.fps}, bitrate={self.bitrate}'     \
+               f', excludeWindowList={self.excludeWindowList})'
 
     __repr__ = __str__
 
@@ -532,7 +556,7 @@ def chooseSdkBinDir(sdkBinDir: str):
     print(f'SdkBinDir={SdkBinDir}, SdkVerson={SdkVerson}, SdkBinDirFull={SdkBinDirFull}')
 
 
-RtcEngineEventCallback = ctypes.WINFUNCTYPE(None, ctypes.c_void_p, ctypes.c_int64, ctypes.c_char_p, ctypes.c_char_p)
+RtcEngineEventCFuncCallback = ctypes.CFUNCTYPE(None, ctypes.c_void_p, ctypes.c_int64, ctypes.c_char_p, ctypes.c_char_p)
 
 
 class RtcEngine:
@@ -540,7 +564,7 @@ class RtcEngine:
         self.dll = _DllClient.instance().dll
         self.callback = None
         self.printCallback = True
-        self.eventHandlerUserData = {}
+        self.eventHandlerUserData = {}  #Dict[int, str]
         self.rtcEngine = self.dll.createRtcEngine()
         self.pRtcEngine = ctypes.c_void_p(self.rtcEngine)
         self.rtcEngineEventHandler = self.dll.createRtcEngineEventHandler()
@@ -555,15 +579,15 @@ class RtcEngine:
     def __del__(self):
         self.release(sync=True)
 
-    def rtcEngineEventCallback(self, eventHandler: int, callbackTimeSinceEpoch: int, funcName: bytes, jsonStr: bytes) -> None:
+    def RtcEngineEventCFuncCallback(self, eventHandler: int, callbackTimeSinceEpoch: int, funcName: bytes, jsonStr: bytes) -> None:
         funcName = funcName.decode('utf-8')
         jsonStr = jsonStr.decode('utf-8')
         if self.printCallback:
-            log.info(f'0x{eventHandler:X} {self.eventHandlerUserData[eventHandler]} epoch: {callbackTimeSinceEpoch} {funcName} {jsonStr}')
+            log.info(f'0x{eventHandler:X} {self.eventHandlerUserData.get(eventHandler, "Channel")} epoch: {callbackTimeSinceEpoch} {funcName} {jsonStr}')
         # if jsonStr:
             # jsonStr = json.loads(jsonStr)
         if self.callback:
-            self.callback(self.eventHandlerUserData[eventHandler], callbackTimeSinceEpoch, funcName, jsonStr)
+            self.callback(self.eventHandlerUserData.get(eventHandler, "Channel"), callbackTimeSinceEpoch, funcName, jsonStr)
 
     @MeasureTime
     def release(self, sync: bool = True) -> None:
@@ -598,11 +622,11 @@ class RtcEngine:
     def initalize(self, context: RtcEngineContext, callback: Callable[[str, int, str, str], None], userData: str = 'Channel') -> int:
         self.callback = callback
         self.eventHandlerUserData[self.rtcEngineEventHandler] = userData
-        self.eventCallbackInstance = RtcEngineEventCallback(self.rtcEngineEventCallback)
-        self.dll.setRtcEngineEventCallback(self.pRtcEngienEventHandler, self.eventCallbackInstance)
+        self.eventCFuncCallback = RtcEngineEventCFuncCallback(self.RtcEngineEventCFuncCallback)
+        self.dll.setRtcEngineEventCallback(self.pRtcEngienEventHandler, self.eventCFuncCallback)
 
         self.eventHandlerUserData[self.rtcEngineEventHandlerEx] = f'{userData}Ex'
-        self.dll.setRtcEngineEventCallback(self.pRtcEngienEventHandlerEx, self.eventCallbackInstance)
+        self.dll.setRtcEngineEventCallback(self.pRtcEngienEventHandlerEx, self.eventCFuncCallback)
 
         appId = context.appId.encode('utf-8')
         logPath = context.logConfig.logPath.encode('utf-8')
@@ -979,13 +1003,30 @@ class RtcEngine:
         return ret
 
     @MeasureTime
-    def takeSnapshot(self, channel: str, uid: int, filePath: str) -> int:
+    def takeSnapshot(self, channel: str, uid: int, filePath: str, rect: Tuple[float, float, float, float] = None) -> int:
+        if SdkVerson.startswith('3.6.200.10'):
+            channel = channel.encode('utf-8')
+            filePath = filePath.encode('utf-8')
+            ret = self.dll.takeSnapshot(self.pRtcEngine, ctypes.c_char_p(channel), uid, ctypes.c_char_p(filePath),
+                                        ctypes.c_float(rect[0]), ctypes.c_float(rect[1]), ctypes.c_float(rect[2]), ctypes.c_float(rect[3]),
+                                        self.pRtcEngienEventHandler)
+            return ret
+
         if SdkVerson < '3.7.200':
             log.error(f'{SdkVerson} does not support this API')
             return -1
         channel = channel.encode('utf-8')
         filePath = filePath.encode('utf-8')
         ret = self.dll.takeSnapshot(self.pRtcEngine, ctypes.c_char_p(channel), uid, ctypes.c_char_p(filePath), self.pRtcEngienEventHandler)
+        return ret
+
+    @MeasureTime
+    def startServerSuperResolution(self, token: str, imagePath: str, scale: float, timeoutSeconds: int) -> int:
+        if not SdkVerson.startswith('3.6.200.10'):
+            log.error(f'{SdkVerson} does not support this API')
+        token = token.encode('utf-8')
+        imagePath = imagePath.encode('utf-8')
+        ret = self.dll.startServerSuperResolution(self.pRtcEngine, ctypes.c_char_p(token), ctypes.c_char_p(imagePath), ctypes.c_float(scale), timeoutSeconds)
         return ret
 
     @MeasureTime
@@ -998,9 +1039,16 @@ class RtcEngine:
 
     @MeasureTime
     def startScreenCaptureByScreenRect(self, screenRect: Rectangle, regionRect: Rectangle, captureParams: ScreenCaptureParameters) -> int:
+        excludeWindowList = 0
+        excludeWindowCount = 0
+        if captureParams.excludeWindowList:
+            arrayType = ctypes.c_size_t * len(captureParams.excludeWindowList)
+            excludeWindowList = arrayType(*captureParams.excludeWindowList)
+            excludeWindowCount = len(captureParams.excludeWindowList)
         ret = self.dll.startScreenCaptureByScreenRect(self.pRtcEngine, screenRect.x, screenRect.y, screenRect.width, screenRect.height,
                                                       regionRect.x, regionRect.y, regionRect.width, regionRect.height,
-                                                      captureParams.width, captureParams.height, captureParams.fps, captureParams.bitrate)
+                                                      captureParams.width, captureParams.height, captureParams.fps, captureParams.bitrate,
+                                                      excludeWindowList, excludeWindowCount)
         return ret
 
     @MeasureTime
