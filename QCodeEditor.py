@@ -19,15 +19,10 @@ Module is compatible with both pyQt4 and pyQt5
 
 '''
 
-import PyQt5 as PyQt
-pyQtVersion = "PyQt5"
 
-# imports requied PyQt modules
-from PyQt5.QtCore import Qt, QRect, QRegExp
+from PyQt5.QtCore import Qt, QRect
 from PyQt5.QtWidgets import QWidget, QTextEdit, QPlainTextEdit
-from PyQt5.QtGui import (QColor, QPainter, QFont, QSyntaxHighlighter,
-                         QTextFormat, QTextCharFormat)
-# classes definition
+from PyQt5.QtGui import (QColor, QPainter, QFont, QSyntaxHighlighter, QTextFormat)
 
 
 class QCodeEditor(QPlainTextEdit):
@@ -166,45 +161,3 @@ class QCodeEditor(QPlainTextEdit):
             hi_selection.cursor = self.textCursor()
             hi_selection.cursor.clearSelection()
             self.setExtraSelections([hi_selection])
-
-##############################################################################
-
-
-if __name__ == '__main__':
-
-    # TESTING
-
-    def run_test():
-        print("\n {} is imported".format(pyQtVersion))
-        # imports requied PyQt modules
-        from PyQt5.QtWidgets import QApplication
-
-        import sys
-
-        app = QApplication([])
-
-        editor = QCodeEditor(DISPLAY_LINE_NUMBERS=True,
-                             HIGHLIGHT_CURRENT_LINE=True,
-                             SyntaxHighlighter=None)
-
-        text = '''<FINITELATTICE>
-  <LATTICE name="myLattice">
-    <BASIS>
-      <VECTOR>1.0 0.0 0.0</VECTOR>
-      <VECTOR>0.0 1.0 0.0</VECTOR>
-    </BASIS>
-  </LATTICE>
-  <PARAMETER name="L" />
-  <PARAMETER default="L" name="W" />
-  <EXTENT dimension="1" size="L" />
-  <EXTENT dimension="2" size="W" />
-  <BOUNDARY type="periodic" />
-</FINITELATTICE>
-'''
-        editor.setPlainText(text)
-        editor.resize(400, 250)
-        editor.show()
-
-        sys.exit(app.exec_())
-
-    run_test()

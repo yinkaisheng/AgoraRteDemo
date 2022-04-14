@@ -13,13 +13,27 @@ import datetime
 from typing import Any, Callable, Iterator, Dict, List, Tuple
 
 
+_SelfFileName = os.path.split(__file__)[1]
+
+
 def isPy38OrHigher():
     return (sys.version_info[0] == 3 and sys.version_info[1] >= 8) or sys.version_info[0] > 3
 
 
-def printx(*values, sep: str = ' ', end: str = None, flush: bool = False) -> None:
+def printx(*values, sep: str = ' ', end: str = None, flush: bool = False, caller: bool = True) -> None:
     t = datetime.datetime.now()
-    timestr = f'{t.year}-{t.month:02}-{t.day:02} {t.hour:02}:{t.minute:02}:{t.second:02}.{t.microsecond // 1000:03}:'
+    if caller:
+        frameCount = 1
+        while True:
+            frame = sys._getframe(frameCount)
+            #_, scriptFileName = os.path.split(frame.f_code.co_filename)
+            scriptFileName = os.path.basename(frame.f_code.co_filename)
+            if scriptFileName != _SelfFileName:
+                break
+            frameCount += 1
+        timestr = f'{t.year}-{t.month:02}-{t.day:02} {t.hour:02}:{t.minute:02}:{t.second:02}.{t.microsecond // 1000:03} {frame.f_code.co_name}[{frame.f_lineno}]:'
+    else:
+        timestr = f'{t.year}-{t.month:02}-{t.day:02} {t.hour:02}:{t.minute:02}:{t.second:02}.{t.microsecond // 1000:03} :'
     print(timestr, *values, sep=sep, end=end)
     if flush and sys.stdout:
         sys.stdout.flush()

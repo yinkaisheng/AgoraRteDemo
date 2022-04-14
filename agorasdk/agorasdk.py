@@ -40,9 +40,9 @@ if sys.stdout:
         def __init__(self, fmt=None, datefmt=None, style='%', validate=True):
             super(MyFormatter, self).__init__(fmt, datefmt, style, validate)
 
-    class MyHandler(log.Handler):
-        def emit(self, record):
-            print('custom handler called with\n', record)
+    #class MyHandler(log.Handler):
+        #def emit(self, record):
+            #print('custom handler called with\n', record)
 
     sh = log.StreamHandler(sys.stdout)
     sh.setFormatter(MyFormatter('%(asctime)s %(filename)s L%(lineno)d T%(thread)d %(funcName)s: %(message)s'))
@@ -329,12 +329,13 @@ class RtcConnection():
 class ChannelMediaOptions():
     def __init__(self, channelProfile: ChannelProfile = ChannelProfile.LiveBroadcasting,
                  clientRole: ClientRole = ClientRole.Broadcaster,
-                 autoSubscribeAudio: bool = True,
-                 autoSubscribeVideo: bool = True,
-                 publishAudioTrack: bool = True,
-                 publishCameraTrack: bool = True,
+                 autoSubscribeAudio: bool = None,
+                 autoSubscribeVideo: bool = None,
+                 publishAudioTrack: bool = None,
+                 publishCameraTrack: bool = None,
                  publishSecondaryCameraTrack: bool = None,
                  publishScreenTrack: bool = None,
+                 publishSecondaryScreenTrack: bool = None,
                  publishCustomAudioTrack: bool = None,
                  publishCustomVideoTrack: bool = None):
         self.channelProfile = channelProfile
@@ -345,6 +346,7 @@ class ChannelMediaOptions():
         self.publishCameraTrack = publishCameraTrack
         self.publishSecondaryCameraTrack = publishSecondaryCameraTrack
         self.publishScreenTrack = publishScreenTrack
+        self.publishSecondaryScreenTrack = publishSecondaryScreenTrack
         self.publishCustomAudioTrack = publishCustomAudioTrack
         self.publishCustomVideoTrack = publishCustomVideoTrack
 
@@ -356,8 +358,9 @@ class ChannelMediaOptions():
     def __str__(self) -> str:
         return f'{self.__class__.__name__}(channelProfile={self.channelProfile}, clientRole={self.clientRole}, '    \
             f'autoSubscribeAudio={self.autoSubscribeAudio}, autoSubscribeVideo={self.autoSubscribeVideo}, ' \
-            f'publishAudioTrack={self.publishAudioTrack}, publishCameraTrack={self.publishCameraTrack}, '   \
-            f'publishSecondaryCameraTrack={self.publishSecondaryCameraTrack}, publishScreenTrack={self.publishScreenTrack}, '   \
+            f'publishAudioTrack={self.publishAudioTrack}, '   \
+            f'publishCameraTrack={self.publishCameraTrack}, publishSecondaryCameraTrack={self.publishSecondaryCameraTrack}, '   \
+            f'publishScreenTrack={self.publishScreenTrack}, publishSecondaryScreenTrack={self.publishSecondaryScreenTrack}, '   \
             f'publishCustomAudioTrack={self.publishCustomAudioTrack}, publishCustomVideoTrack={self.publishCustomVideoTrack})'
 
     __repr__ = __str__
@@ -398,19 +401,26 @@ class VideoEncoderConfiguration():
     __repr__ = __str__
 
 
+class ViewSetupMode():
+    Replace = 0
+    Add = 1
+    Remove = 2
+
+
 class VideoCanvas():
     def __init__(self, uid: int, view: int, mirrorMode: VideoMirrorMode = VideoMirrorMode.Auto, renderMode: RenderMode = RenderMode.Fit,
-                 sourceType: VideoSourceType = VideoSourceType.CameraPrimary, isScreenView: bool = False):
+                 sourceType: VideoSourceType = VideoSourceType.CameraPrimary, isScreenView: bool = False, setupMode: ViewSetupMode = -1):
         self.isScreenView = isScreenView
         self.mirrorMode = mirrorMode
         self.renderMode = renderMode
         self.sourceType = sourceType
         self.uid = uid
         self.view = view
+        self.setupMode = setupMode
 
     def __str__(self) -> str:
         return f'{self.__class__.__name__}(uid={self.uid}, view=0x{self.view:X}, mirrorMode={self.mirrorMode}, '    \
-               f'renderMode={self.renderMode}, sourceType={self.sourceType})'
+               f'renderMode={self.renderMode}, sourceType={self.sourceType}, setupMode={self.setupMode})'
 
     __repr__ = __str__
 
@@ -452,6 +462,21 @@ class ScreenCaptureParameters():
         self.fps = fps
         self.bitrate = bitrate
         self.excludeWindowList = excludeWindowList
+
+    def __str__(self) -> str:
+        return f'{self.__class__.__name__}(width={self.width}, height={self.height},fps={self.fps}, bitrate={self.bitrate}'     \
+               f', excludeWindowList={self.excludeWindowList})'
+
+    __repr__ = __str__
+
+
+class ScreenCaptureConfiguration():
+    def __init__(self, isCaptureWindow: bool = False, windowId: int = 0, screenRect: Rectangle = None, regionRect: Rectangle = None, params: ScreenCaptureParameters = None):
+        self.isCaptureWindow = isCaptureWindow
+        self.windowId = windowId
+        self.screenRect = screenRect
+        self.regionRect = regionRect
+        self.params = params
 
     def __str__(self) -> str:
         return f'{self.__class__.__name__}(width={self.width}, height={self.height},fps={self.fps}, bitrate={self.bitrate}'     \
@@ -967,7 +992,7 @@ class RtcEngine:
     @MeasureTime
     def setupLocalVideo(self, videoCanvas: VideoCanvas) -> int:
         ret = self.dll.setupLocalVideo(self.pRtcEngine, videoCanvas.uid, ctypes.c_void_p(videoCanvas.view), videoCanvas.mirrorMode,
-                                       videoCanvas.renderMode, videoCanvas.sourceType, int(videoCanvas.isScreenView))
+                                       videoCanvas.renderMode, videoCanvas.sourceType, int(videoCanvas.isScreenView), videoCanvas.setupMode)
         return ret
 
     @MeasureTime
@@ -1038,24 +1063,52 @@ class RtcEngine:
         return ret
 
     @MeasureTime
-    def startScreenCaptureByScreenRect(self, screenRect: Rectangle, regionRect: Rectangle, captureParams: ScreenCaptureParameters) -> int:
+    def startScreenCaptureByScreenRect(self, screenRect: Rectangle, regionRect: Rectangle, params: ScreenCaptureParameters) -> int:
         excludeWindowList = 0
         excludeWindowCount = 0
-        if captureParams.excludeWindowList:
-            arrayType = ctypes.c_size_t * len(captureParams.excludeWindowList)
-            excludeWindowList = arrayType(*captureParams.excludeWindowList)
-            excludeWindowCount = len(captureParams.excludeWindowList)
+        if params.excludeWindowList:
+            arrayType = ctypes.c_size_t * len(params.excludeWindowList)
+            excludeWindowList = arrayType(*params.excludeWindowList)
+            excludeWindowCount = len(params.excludeWindowList)
         ret = self.dll.startScreenCaptureByScreenRect(self.pRtcEngine, screenRect.x, screenRect.y, screenRect.width, screenRect.height,
                                                       regionRect.x, regionRect.y, regionRect.width, regionRect.height,
-                                                      captureParams.width, captureParams.height, captureParams.fps, captureParams.bitrate,
+                                                      params.width, params.height, params.fps, params.bitrate,
                                                       excludeWindowList, excludeWindowCount)
         return ret
 
     @MeasureTime
-    def startScreenCaptureByWindowId(self, view: int, regionRect: Rectangle, captureParams: ScreenCaptureParameters) -> int:
+    def startPrimaryScreenCapture(self, screenRect: Rectangle, regionRect: Rectangle, params: ScreenCaptureParameters) -> int:
+        excludeWindowList = 0
+        excludeWindowCount = 0
+        if params.excludeWindowList:
+            arrayType = ctypes.c_size_t * len(params.excludeWindowList)
+            excludeWindowList = arrayType(*params.excludeWindowList)
+            excludeWindowCount = len(params.excludeWindowList)
+        ret = self.dll.startPrimaryScreenCapture(self.pRtcEngine, screenRect.x, screenRect.y, screenRect.width, screenRect.height,
+                                                 regionRect.x, regionRect.y, regionRect.width, regionRect.height,
+                                                 params.width, params.height, params.fps, params.bitrate,
+                                                 excludeWindowList, excludeWindowCount)
+        return ret
+
+    @MeasureTime
+    def startSecondaryScreenCapture(self, screenRect: Rectangle, regionRect: Rectangle, params: ScreenCaptureParameters) -> int:
+        excludeWindowList = 0
+        excludeWindowCount = 0
+        if params.excludeWindowList:
+            arrayType = ctypes.c_size_t * len(params.excludeWindowList)
+            excludeWindowList = arrayType(*params.excludeWindowList)
+            excludeWindowCount = len(params.excludeWindowList)
+        ret = self.dll.startSecondaryScreenCapture(self.pRtcEngine, screenRect.x, screenRect.y, screenRect.width, screenRect.height,
+                                                   regionRect.x, regionRect.y, regionRect.width, regionRect.height,
+                                                   params.width, params.height, params.fps, params.bitrate,
+                                                   excludeWindowList, excludeWindowCount)
+        return ret
+
+    @MeasureTime
+    def startScreenCaptureByWindowId(self, view: int, regionRect: Rectangle, params: ScreenCaptureParameters) -> int:
         ret = self.dll.startScreenCaptureByWindowId(self.pRtcEngine, ctypes.c_void_p(view),
                                                     regionRect.x, regionRect.y, regionRect.width, regionRect.height,
-                                                    captureParams.width, captureParams.height, captureParams.fps, captureParams.bitrate)
+                                                    params.width, params.height, params.fps, params.bitrate)
         return ret
 
     @MeasureTime
@@ -1093,23 +1146,41 @@ class RtcEngine:
         return ret
 
     @MeasureTime
-    def joinChannel2(self, channelName: str, uid: int = 0, token: str = '', options: ChannelMediaOptions = ChannelMediaOptions()) -> int:
+    def joinChannelWithOptions(self, channelName: str, uid: int = 0, token: str = '', options: ChannelMediaOptions = ChannelMediaOptions()) -> int:
         channelName = channelName.encode('utf-8')
         token = token.encode('utf-8')
         options.convertNone()
-        ret = self.dll.joinChannel2(self.pRtcEngine,
-                                    ctypes.c_char_p(channelName),
-                                    uid, ctypes.c_char_p(token),
-                                    options.channelProfile,
-                                    options.clientRole,
-                                    options.autoSubscribeAudio,
-                                    options.autoSubscribeVideo,
-                                    options.publishAudioTrack,
-                                    options.publishCameraTrack,
-                                    options.publishSecondaryCameraTrack,
-                                    options.publishScreenTrack,
-                                    options.publishCustomAudioTrack,
-                                    options.publishCustomVideoTrack)
+        ret = self.dll.joinChannelWithOptions(self.pRtcEngine,
+                                              ctypes.c_char_p(channelName),
+                                              uid, ctypes.c_char_p(token),
+                                              options.channelProfile,
+                                              options.clientRole,
+                                              options.autoSubscribeAudio,
+                                              options.autoSubscribeVideo,
+                                              options.publishAudioTrack,
+                                              options.publishCameraTrack,
+                                              options.publishSecondaryCameraTrack,
+                                              options.publishScreenTrack,
+                                              options.publishSecondaryScreenTrack,
+                                              options.publishCustomAudioTrack,
+                                              options.publishCustomVideoTrack)
+        return ret
+
+    @MeasureTime
+    def updateChannelMediaOptions(self, options: ChannelMediaOptions) -> int:
+        options.convertNone()
+        ret = self.dll.updateChannelMediaOptions(self.pRtcEngine,
+                                                 options.channelProfile,
+                                                 options.clientRole,
+                                                 options.autoSubscribeAudio,
+                                                 options.autoSubscribeVideo,
+                                                 options.publishAudioTrack,
+                                                 options.publishCameraTrack,
+                                                 options.publishSecondaryCameraTrack,
+                                                 options.publishScreenTrack,
+                                                 options.publishSecondaryScreenTrack,
+                                                 options.publishCustomAudioTrack,
+                                                 options.publishCustomVideoTrack)
         return ret
 
     @MeasureTime
@@ -1134,6 +1205,7 @@ class RtcEngine:
                                                        options.publishCameraTrack,
                                                        options.publishSecondaryCameraTrack,
                                                        options.publishScreenTrack,
+                                                       options.publishSecondaryScreenTrack,
                                                        options.publishCustomAudioTrack,
                                                        options.publishCustomVideoTrack)
         return ret
@@ -1161,8 +1233,29 @@ class RtcEngine:
                                      options.publishCameraTrack,
                                      options.publishSecondaryCameraTrack,
                                      options.publishScreenTrack,
+                                     options.publishSecondaryScreenTrack,
                                      options.publishCustomAudioTrack,
                                      options.publishCustomVideoTrack)
+        return ret
+
+    @MeasureTime
+    def updateChannelMediaOptionsEx(self, connection: RtcConnection, options: ChannelMediaOptions) -> int:
+        channelName = connection.channelId.encode('utf-8') if connection.channelId != None else 0
+        options.convertNone()
+        ret = self.dll.updateChannelMediaOptionsEx(self.pRtcEngine,
+                                                   ctypes.c_char_p(channelName),
+                                                   connection.localUid,
+                                                   options.channelProfile,
+                                                   options.clientRole,
+                                                   options.autoSubscribeAudio,
+                                                   options.autoSubscribeVideo,
+                                                   options.publishAudioTrack,
+                                                   options.publishCameraTrack,
+                                                   options.publishSecondaryCameraTrack,
+                                                   options.publishScreenTrack,
+                                                   options.publishSecondaryScreenTrack,
+                                                   options.publishCustomAudioTrack,
+                                                   options.publishCustomVideoTrack)
         return ret
 
     @MeasureTime

@@ -2,6 +2,20 @@ name=setClientRole
 editable=0
 code=
 self.rtcEngine.setClientRole(role=1)
+
+----boundary----
+
+name=updateChannelMediaOptionsEx
+editable=0
+code=
+
+channelName = self.channelNameEdit.text().strip()
+uid = int(self.uidExEdit.text())
+rtcConnection = agsdk.RtcConnection(channelName, uid)
+options = agsdk.ChannelMediaOptions()
+options.publishSecondaryCameraTrack = False
+self.rtcEngine.updateChannelMediaOptionsEx(rtcConnection, options)
+
 ----boundary----
 
 name=takeSnapshot
@@ -18,6 +32,7 @@ self.callbackMethods['onSnapshotTaken'] = self.onSnapshotTaken
 channelName = self.channelNameEdit.text().strip()
 uid = 0
 self.rtcEngine.takeSnapshot(channelName, uid, r'd:/downloads/snap.jpg', rect=(0.0, 0.0, 0.75, 0.75))
+
 ----boundary----
 
 name=startServerSuperResolution
@@ -32,6 +47,7 @@ MainWindow.onServerSuperResolutionResult = onServerSuperResolutionResult
 self.callbackMethods['onServerSuperResolutionResult'] = self.onServerSuperResolutionResult
 
 self.rtcEngine.startServerSuperResolution(self.configJson['tokenUid'], r'd:/downloads/snap.jpg', 2.0, 5)
+
 ----boundary----
 
 name=组合: 截图和局部超分
@@ -54,4 +70,5 @@ self.callbackMethods['onServerSuperResolutionResult'] = self.onServerSuperResolu
 channelName = self.channelNameEdit.text().strip()
 uid = 0
 self.rtcEngine.takeSnapshot(channelName, uid, r'd:/downloads/snap.jpg', rect=(0.25, 0.25, 0.75, 0.75))
+
 ----boundary----
