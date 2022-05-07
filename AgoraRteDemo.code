@@ -1,7 +1,7 @@
 name=setClientRole
 editable=0
 code=
-self.rtcEngine.setClientRole(role=1)
+self.ret = self.rtcEngine.setClientRole(role=1)
 
 ----boundary----
 
@@ -14,7 +14,90 @@ uid = int(self.uidExEdit.text())
 rtcConnection = agsdk.RtcConnection(channelName, uid)
 options = agsdk.ChannelMediaOptions()
 options.publishSecondaryCameraTrack = False
-self.rtcEngine.updateChannelMediaOptionsEx(rtcConnection, options)
+self.ret = self.rtcEngine.updateChannelMediaOptionsEx(rtcConnection, options)
+
+----boundary----
+
+name=getVideoDeviceCapabilities
+editable=0
+code=
+
+devices = self.rtcEngine.getVideoDevices()
+outputs = []
+for deviceName, deviceId in devices:
+    capabilities = self.rtcEngine.getVideoDeviceCapabilities(deviceId)
+    outputs.append(f'{deviceName}, {deviceId}, CapabilitiesCount={len(capabilities)}\n')
+    for cap in capabilities:
+        outputs.append(f'    width: {cap[0]:<4} height: {cap[1]:<4} fps: {cap[2]}\n')
+self.codeDlg.outputEdit.appendPlainText(''.join(outputs))
+
+----boundary----
+
+name=trapezoid_corr_option
+editable=0
+code=
+
+self.ret = self.rtcEngine.setExtensionProperty('agora', 'beauty', 'trapezoid_corr_option', r'''
+{
+    "assistLine": 1,
+    "setDragPoint": {
+        "dragDstPoint": {
+            "x": 0.100000,
+            "y": 0.100000
+        },
+        "dragSrcPoint": {
+            "x": 0.200000,
+            "y": 0.200000
+        },
+        "dragFinished": 1
+    },
+    "assistLine": 1,
+    "enable": 1
+}
+''')
+
+----boundary----
+
+name=getLocalTrapezoidCorrectionOptions
+editable=0
+code=
+
+self.ret = self.rtcEngine.getLocalTrapezoidCorrectionOptions(sourceType=0)
+
+----boundary----
+
+name=getRemoteTrapezoidCorrectionOptions
+editable=0
+code=
+
+self.ret = self.rtcEngine.getRemoteTrapezoidCorrectionOptions(uid=111)
+
+----boundary----
+
+name=setCameraDeviceOrientation
+editable=0
+code=
+
+self.ret = self.rtcEngine.setCameraDeviceOrientation(orientation=180, sourceType=0)
+
+----boundary----
+
+name=applyVideoOrientationToRemote
+editable=0
+code=
+
+remoteUid = 111
+self.ret = self.rtcEngine.applyVideoOrientationToRemote(uid=remoteUid, orientation=180)
+
+----boundary----
+
+name=applyVideoOrientationToRemoteEx
+editable=0
+code=
+
+remoteUid = 111
+rtcConnection = agsdk.RtcConnection(self.channelNameEdit.text().strip(), int(self.uidExEdit.text()))
+self.ret = self.rtcEngine.applyVideoOrientationToRemoteEx(uid=remoteUid, orientation=180, connection=rtcConnection)
 
 ----boundary----
 
@@ -27,11 +110,11 @@ def onSnapshotTaken(self, userData: str, callbackTimeSinceEpoch: int, funcName: 
     if jsInfo['errCode'] == 0 and jsInfo['filePath']:
         subprocess.Popen(jsInfo['filePath'], shell=True)
 MainWindow.onSnapshotTaken = onSnapshotTaken
-self.callbackMethods['onSnapshotTaken'] = self.onSnapshotTaken
+self.rtcEngineEventHandler['onSnapshotTaken'] = self.onSnapshotTaken
 
 channelName = self.channelNameEdit.text().strip()
 uid = 0
-self.rtcEngine.takeSnapshot(channelName, uid, r'd:/downloads/snap.jpg', rect=(0.0, 0.0, 0.75, 0.75))
+self.ret = self.rtcEngine.takeSnapshot(channelName, uid, r'd:/downloads/snap.jpg', rect=(0.0, 0.0, 0.75, 0.75))
 
 ----boundary----
 
@@ -44,9 +127,9 @@ def onServerSuperResolutionResult(self, userData: str, callbackTimeSinceEpoch: i
     if jsInfo['httpStatusCode'] == 200 and jsInfo['imagePath']:
         subprocess.Popen(jsInfo['imagePath'], shell=True)
 MainWindow.onServerSuperResolutionResult = onServerSuperResolutionResult
-self.callbackMethods['onServerSuperResolutionResult'] = self.onServerSuperResolutionResult
+self.rtcEngineEventHandler['onServerSuperResolutionResult'] = self.onServerSuperResolutionResult
 
-self.rtcEngine.startServerSuperResolution(self.configJson['tokenUid'], r'd:/downloads/snap.jpg', 2.0, 5)
+self.ret = self.rtcEngine.startServerSuperResolution(self.configJson['tokenUid'], r'd:/downloads/snap.jpg', 2.0, 5)
 
 ----boundary----
 
@@ -58,17 +141,17 @@ def onSnapshotTaken(self, userData: str, callbackTimeSinceEpoch: int, funcName: 
     if jsInfo['errCode'] == 0 and jsInfo['filePath']:
         self.rtcEngine.startServerSuperResolution(self.configJson['tokenUid'], jsInfo['filePath'], 2.0, 5)
 MainWindow.onSnapshotTaken = onSnapshotTaken
-self.callbackMethods['onSnapshotTaken'] = self.onSnapshotTaken
+self.rtcEngineEventHandler['onSnapshotTaken'] = self.onSnapshotTaken
 
 def onServerSuperResolutionResult(self, userData: str, callbackTimeSinceEpoch: int, funcName: str, jsStr: str, jsInfo: Dict) -> None:
     self.codeDlg.outputEdit.appendPlainText(f'{funcName}: {jsStr}\n')
     if jsInfo['httpStatusCode'] == 200 and jsInfo['imagePath']:
         subprocess.Popen(jsInfo['imagePath'], shell=True)
 MainWindow.onServerSuperResolutionResult = onServerSuperResolutionResult
-self.callbackMethods['onServerSuperResolutionResult'] = self.onServerSuperResolutionResult
+self.rtcEngineEventHandler['onServerSuperResolutionResult'] = self.onServerSuperResolutionResult
 
 channelName = self.channelNameEdit.text().strip()
 uid = 0
-self.rtcEngine.takeSnapshot(channelName, uid, r'd:/downloads/snap.jpg', rect=(0.25, 0.25, 0.75, 0.75))
+self.ret = self.rtcEngine.takeSnapshot(channelName, uid, r'd:/downloads/snap.jpg', rect=(0.25, 0.25, 0.75, 0.75))
 
 ----boundary----

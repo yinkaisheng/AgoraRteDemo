@@ -26,7 +26,7 @@ from PyQt5.QtCore import QObject, QThread, QTimer, Qt, pyqtSignal
 from PyQt5.QtGui import QCloseEvent, QColor, QContextMenuEvent, QCursor, QFont, QIcon, QIntValidator, QKeyEvent, QMouseEvent, QPainter, QPixmap, QTextCursor, QTextOption
 from PyQt5.QtWidgets import QAction, QApplication, QDesktopWidget, QDialog, QInputDialog, QMainWindow, QMenu, QMessageBox, QWidget, qApp
 from PyQt5.QtWidgets import QCheckBox, QComboBox, QLabel, QLineEdit, QListView, QPushButton, QRadioButton, QSlider, QPlainTextEdit, QTextEdit, QToolTip
-from PyQt5.QtWidgets import QGridLayout, QHBoxLayout, QLayout, QVBoxLayout
+from PyQt5.QtWidgets import QGridLayout, QHBoxLayout, QLayout, QSplitter, QVBoxLayout
 from QCodeEditor import QCodeEditor
 import pyqt5AsyncTask as astask
 
@@ -172,9 +172,12 @@ class TipDlg(QDialog):
 
 
 class CodeDlg(QDialog):
+    Signal = pyqtSignal(str)
+
     def __init__(self, parent: QObject = None):
         super(CodeDlg, self).__init__(parent)
         self.mainWindow = parent
+        self.threadId = threading.currentThread().ident
         self.setWindowFlags(Qt.Dialog | Qt.WindowMaximizeButtonHint | Qt.WindowCloseButtonHint)
         self.setWindowTitle(f"Python {sys.version.split()[0]} Code Executor ")
         # self.setAttribute(Qt.WA_DeleteOnClose)
@@ -207,9 +210,9 @@ class CodeDlg(QDialog):
         button.clicked.connect(self.onClickRun)
         hLayout.addWidget(button)
 
-        button = QPushButton('load')
+        button = QPushButton('reload')
         button.setMinimumHeight(BUTTON_HEIGHT)
-        button.clicked.connect(self.onClickLoad)
+        button.clicked.connect(self.onClickReload)
         hLayout.addWidget(button)
 
         self.saveButton = QPushButton('save')
@@ -217,13 +220,32 @@ class CodeDlg(QDialog):
         self.saveButton.clicked.connect(self.onClickSave)
         hLayout.addWidget(self.saveButton)
 
-        self.inputEdit = QCodeEditor()
-        self.inputEdit.setStyleSheet('QPlainTextEdit{font-size:16px;font-family:Consolas;background-color:rgb(204,232,207);}')
-        #self.inputEdit.setPlainText(codeText)
-        vLayout.addWidget(self.inputEdit, stretch=2)
+        button = QPushButton('clearCode')
+        button.setMinimumHeight(BUTTON_HEIGHT)
+        button.clicked.connect(self.onClickClearCode)
+        hLayout.addWidget(button)
+
+        button = QPushButton('clearOutput')
+        button.setMinimumHeight(BUTTON_HEIGHT)
+        button.clicked.connect(self.onClickClearOutput)
+        hLayout.addWidget(button)
+
+        self.checkScrollToEnd = QCheckBox('AutoScrollToEnd')
+        self.checkScrollToEnd.setChecked(True)
+        hLayout.addWidget(self.checkScrollToEnd)
+
+        self.qsplitter = QSplitter(Qt.Vertical)
+        vLayout.addWidget(self.qsplitter)
+        self.codeEdit = QCodeEditor()
+        self.codeEdit.setStyleSheet('QPlainTextEdit{font-size:16px;font-family:Consolas;background-color:rgb(204,232,207);}')
+        # self.codeEdit.setPlainText(codeText)
+        self.qsplitter.addWidget(self.codeEdit)
         self.outputEdit = QPlainTextEdit()
         self.outputEdit.setStyleSheet('QPlainTextEdit{font-size:14px;font-family:Consolas;background-color:rgb(204,232,207);}')
-        vLayout.addWidget(self.outputEdit, stretch=1)
+        self.qsplitter.addWidget(self.outputEdit)
+        self.qsplitter.setSizes([100, 100])
+        self.Signal.connect(self.outputEdit.appendPlainText)
+        agsdk.agorasdk.GuiStreamObj.setLogHandler(self.logCallbackHandler)
 
         self.loadApiList()
 
@@ -231,23 +253,23 @@ class CodeDlg(QDialog):
         self.saveButton.setEnabled(index >= len(self.singleApis))
 
     def onClickSave(self) -> None:
-        code = self.inputEdit.toPlainText().strip()
+        code = self.codeEdit.toPlainText().strip()
         if not code:
             return
         self.multiApis[self.apiCombox.currentText()] = code
         self.saveApiList()
 
-    def onClickLoad(self) -> None:
+    def onClickReload(self) -> None:
         self.loadApiList()
 
     def onClickAdd(self) -> None:
         index = self.apiCombox.currentIndex()
         if index < len(self.singleApis):
             code = self.singleApis[self.apiCombox.currentText()]
-            self.inputEdit.appendPlainText(code)
+            self.codeEdit.appendPlainText(code)
         else:
             code = self.multiApis[self.apiCombox.currentText()]
-            self.inputEdit.setPlainText(code)
+            self.codeEdit.setPlainText(code)
 
     def onClickRun(self) -> None:
         button = self.sender()
@@ -255,24 +277,32 @@ class CodeDlg(QDialog):
             return
         self.scrollToEnd()
         try:
-            text = self.inputEdit.toPlainText()
+            text = self.codeEdit.toPlainText()
             #print(type(text), text)
             if button.text() == 'e&val':
                 ret = self.mainWindow.evalCode(text)
-                self.outputEdit.appendPlainText(f'eval(...) = {ret}\n')
+                agsdk.log.info(f'eval(...) = {ret}\n')
             else:  # exec
                 self.mainWindow.execCode(text)
-                self.outputEdit.appendPlainText(f'exec(...) done\n')
+                agsdk.log.info(f'exec(...) done\n')
         except Exception as ex:
             self.outputEdit.appendPlainText(f'\n{ex}\n{traceback.format_exc()}\n')
         self.scrollToEnd()
 
+    def onClickClearCode(self) -> None:
+        self.codeEdit.clear()
+
+    def onClickClearOutput(self) -> None:
+        self.outputEdit.clear()
+
     def scrollToEnd(self) -> None:
-        currentCursor = self.outputEdit.textCursor()
-        currentCursor.movePosition(QTextCursor.End)
-        self.outputEdit.setTextCursor(currentCursor)
+        if self.checkScrollToEnd.isChecked():
+            currentCursor = self.outputEdit.textCursor()
+            currentCursor.movePosition(QTextCursor.End)
+            self.outputEdit.setTextCursor(currentCursor)
 
     def loadApiList(self) -> None:
+        curIndex = self.apiCombox.currentIndex()
         apiPath = os.path.join(agsdk.ExeDir, agsdk.ExeName + '.code')
         text = util.getFileText(apiPath)
         self.singleApis = {}
@@ -303,6 +333,8 @@ class CodeDlg(QDialog):
         names.sort()
         self.apiCombox.addItems(names)
         self.apiCombox.addItems(self.multiApis.keys())
+        if self.apiCombox.count() > curIndex:
+            self.apiCombox.setCurrentIndex(curIndex)
 
     def saveApiList(self) -> None:
         apiPath = os.path.join(agsdk.ExeDir, agsdk.ExeName + '.code')
@@ -311,6 +343,16 @@ class CodeDlg(QDialog):
         text = '\n'.join(f'name={name}\neditable=1\ncode=\n{content}\n{self.boundary}\n' for name, content in self.multiApis.items())
         util.appendTextFile('\n', apiPath)
         util.appendTextFile(text, apiPath)
+
+    def close(self) -> bool:
+        agsdk.agorasdk.GuiStreamObj.setLogHandler(None)
+        return super(CodeDlg, self).close()
+
+    def logCallbackHandler(self, output: str) -> None:
+        if threading.currentThread().ident == self.threadId:
+            self.outputEdit.appendPlainText(output)
+        else:
+            self.Signal.emit(output)
 
 
 class BeautyOptionsDlg(QDialog):
@@ -672,8 +714,8 @@ class MainWindow(QMainWindow, astask.AsyncTask):
         self.clearViewTimer.setSingleShot(True)
         self.clearViewTimer.timeout.connect(self.onClearViewTimeout)
         self.clearViewIndexs = []
-        self.callbackMethods = {}
-        self.initializeCallbacks()
+        self.rtcEngineEventHandler = {}
+        self.initializeEventHandlers()
         self.CallbackSignal.connect(self.onRtcEngineCallback)
         self.inited = False
         self.channelName = ''
@@ -736,7 +778,6 @@ class MainWindow(QMainWindow, astask.AsyncTask):
         self.timer.setSingleShot(True)
         self.timer.timeout.connect(self.activateWindow)
         self.timer.start(100)
-        agsdk.addLogCallback(lambda logStr: self.codeDlg.outputEdit.appendPlainText(logStr))
 
     def evalCode(self, code: str) -> Any:
         return eval(code)
@@ -1140,7 +1181,7 @@ class MainWindow(QMainWindow, astask.AsyncTask):
         hLayout.addWidget(stopPreviewButton)
         self.trapezoidCorrectionButton = QPushButton('TrapezoidCorrection')
         self.trapezoidCorrectionButton.setToolTip('SDK Version must be 3.6.200.10[012]')
-        self.trapezoidCorrectionButton.clicked.connect(self.onClickBeautyTrapezoidCorrection)
+        self.trapezoidCorrectionButton.clicked.connect(self.onClickTrapezoidCorrection)
         hLayout.addWidget(self.trapezoidCorrectionButton)
         hLayout.addStretch(1)
 
@@ -1344,8 +1385,8 @@ class MainWindow(QMainWindow, astask.AsyncTask):
     def runCustom(self, btnInfo: dict) -> None:
         self.continueRunCustom = True
         for funcText in btnInfo["buttonCode"]:
-            #if funcText.startswith('util'):
-                #print('debug')
+            # if funcText.startswith('util'):
+                # print('debug')
             if funcText.startswith('#'):
                 continue
             try:
@@ -1693,10 +1734,10 @@ class MainWindow(QMainWindow, astask.AsyncTask):
         userData, callbackTimeSinceEpoch, funcName, jsStr = args
         #print(f'callbak to UI thread {threading.get_ident()}: userData {userData} epoch {callbackTimeSinceEpoch} \n{funcName} {jsStr}')
         jsInfo = json.loads(jsStr)
-        if funcName in self.callbackMethods:
-            self.callbackMethods[funcName](userData, callbackTimeSinceEpoch, funcName, jsStr, jsInfo)
+        if funcName in self.rtcEngineEventHandler:
+            self.rtcEngineEventHandler[funcName](userData, callbackTimeSinceEpoch, funcName, jsStr, jsInfo)
         else:
-            agsdk.log.info(f'there is no method for {funcName}')
+            agsdk.log.info(f'there is no handler for {funcName}')
 
     def onClickLastError(self) -> None:
         self.tipDlg.showTip()
@@ -1737,8 +1778,8 @@ class MainWindow(QMainWindow, astask.AsyncTask):
         event.accept()
 
     # EngineCallback methods
-    def initializeCallbacks(self) -> None:
-        self.callbackMethods = {
+    def initializeEventHandlers(self) -> None:
+        self.rtcEngineEventHandler = {
             'onError': self.onError,
             'onWarning': self.onWarning,
             'onJoinChannelSuccess': self.onJoinChannelSuccess,
@@ -1859,7 +1900,6 @@ class MainWindow(QMainWindow, astask.AsyncTask):
         self.viewUsingIndex.clear()
         self.setWindowTitle(DemoTile)
         self.sourceTypeCombox.setCurrentIndex(0)
-        agsdk.clearLogCallbacks()
 
     def onClickSetChannelProfile(self) -> None:
         if not self.rtcEngine:
@@ -2092,6 +2132,9 @@ class MainWindow(QMainWindow, astask.AsyncTask):
             if extName.startswith('libagora_video_process'):
                 ret = self.rtcEngine.enableExtension('agora', 'beauty', True, self.curMediaSourceType)
                 self.checkSDKResult(ret)
+                if agsdk.agorasdk.SdkVerson.startswith('3.7.204.dev'):
+                    ret = self.rtcEngine.enableExtension('agora', 'remote_beauty', True, agsdk.MediaSourceType.UnknownMediaSource)
+                    self.checkSDKResult(ret)
             elif extName.startswith('libagora_segmentation'):
                 ret = self.rtcEngine.enableExtension("agora_segmentation", "PortraitSegmentation", True, self.curMediaSourceType)
                 self.checkSDKResult(ret)
@@ -2102,7 +2145,7 @@ class MainWindow(QMainWindow, astask.AsyncTask):
         self.beautyOptionsDlg.raise_()
         self.beautyOptionsDlg.activateWindow()
 
-    def onClickBeautyTrapezoidCorrection(self) -> None:
+    def onClickTrapezoidCorrection(self) -> None:
         self.trapezoidCorrectionDlg.show()
         # need raise_ and activateWindow if dialog is already shown, otherwise codeDlg won't active
         self.trapezoidCorrectionDlg.raise_()
@@ -2116,12 +2159,12 @@ class MainWindow(QMainWindow, astask.AsyncTask):
 
     def onClickRunCode(self) -> None:
         if self.remoteUidCombox.count() > 0:
-            curText = self.codeDlg.inputEdit.toPlainText()
+            curText = self.codeDlg.codeEdit.toPlainText()
             remoteUid, index = util.getStrBetween(curText, 'remoteUid=', '\n')
             if index > 0 and remoteUid not in (self.remoteUidCombox.itemText(it) for it in range(self.remoteUidCombox.count())):
                 newText = curText.replace(f'remoteUid={remoteUid}', f'remoteUid={self.remoteUidCombox.itemText(0)}')
                 if curText != newText:
-                    self.codeDlg.inputEdit.setPlainText(newText)
+                    self.codeDlg.codeEdit.setPlainText(newText)
         self.codeDlg.show()
         # need raise_ and activateWindow if dialog is already shown, otherwise codeDlg won't active
         self.codeDlg.raise_()
@@ -2208,8 +2251,8 @@ class MainWindow(QMainWindow, astask.AsyncTask):
                 self.painter.drawText(x, y, self.pixmap.width() - x, self.pixmap.height() - y, Qt.TextWordWrap, self.pushText)
             self.painter.end()
             image = self.pixmap.toImage()
-            #if not os.path.exists('agorapush.bmp'):
-                #image.save('agorapush.bmp')
+            # if not os.path.exists('agorapush.bmp'):
+                # image.save('agorapush.bmp')
             bits = image.constBits()
             bits.setsize(image.byteCount())
             rawData = ctypes.c_void_p(int(bits))
@@ -2708,7 +2751,7 @@ class MainWindow(QMainWindow, astask.AsyncTask):
         if len(devices) < 2:
             print('video devices count < 2')
             return
-        #primary camera
+        # primary camera
         uid = uid1
         viewIndex = 0
 
@@ -2724,8 +2767,8 @@ class MainWindow(QMainWindow, astask.AsyncTask):
         self.rtcEngine.setupLocalVideo(videoCanvas)
         self.checkSDKResult(ret)
 
-        #for deviceName, deviceId in devices:
-            #pass
+        # for deviceName, deviceId in devices:
+            # pass
         deviceId = devices[0][1]
         cameraConfig = agsdk.CameraCapturerConfiguration()
         cameraConfig.deviceId = deviceId
@@ -2757,7 +2800,7 @@ class MainWindow(QMainWindow, astask.AsyncTask):
         if 0 not in self.viewIndex2EncoderMirrorMode:
             self.viewIndex2EncoderMirrorMode[viewIndex] = videoCanvas.mirrorMode
 
-        #second camera
+        # second camera
         uid = uid2
         token = ''
         viewIndex += 1
@@ -2774,8 +2817,8 @@ class MainWindow(QMainWindow, astask.AsyncTask):
         self.rtcEngine.setupLocalVideo(videoCanvas)
         self.checkSDKResult(ret)
 
-        #for deviceName, deviceId in devices:
-            #pass
+        # for deviceName, deviceId in devices:
+            # pass
         deviceId = devices[1][1]
         cameraConfig = agsdk.CameraCapturerConfiguration()
         cameraConfig.deviceId = deviceId

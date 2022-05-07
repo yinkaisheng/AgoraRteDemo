@@ -7,6 +7,7 @@ import time
 import json
 import ctypes
 import functools
+import threading
 import logging as log
 import ctypes.wintypes
 from enum import Enum, IntEnum
@@ -33,19 +34,40 @@ if not os.path.exists(LogDir):
 log.Formatter.default_msec_format = '%s.%03d'
 log.basicConfig(filename=os.path.join(LogDir, 'AgoraSdk_py.log'), level=log.INFO,
                 format='%(asctime)s %(levelname)s %(filename)s L%(lineno)d T%(thread)d %(funcName)s: %(message)s')
+
+
+class LogFormatter(log.Formatter):
+    default_time_format = '%H:%M:%S'
+
+    def __init__(self, fmt=None, datefmt=None, style='%', validate=True):
+        super(LogFormatter, self).__init__(fmt, datefmt, style, validate)
+
+
+class GuiStream():
+    def __init__(self):
+        self.logHandler = None
+
+    def write(self, output: str) -> None:
+        if self.logHandler:
+            self.logHandler(output)
+
+    def setLogHandler(self, handler) -> None:
+        self.logHandler = handler
+
+
+GuiStreamObj = GuiStream()
+sh = log.StreamHandler(GuiStreamObj)
+sh.setFormatter(LogFormatter('%(asctime)s %(filename)s L%(lineno)d T%(thread)d %(funcName)s: %(message)s'))
+log.getLogger().addHandler(sh)
+
+
 if sys.stdout:
-    class MyFormatter(log.Formatter):
-        default_time_format = '%H:%M:%S'
-
-        def __init__(self, fmt=None, datefmt=None, style='%', validate=True):
-            super(MyFormatter, self).__init__(fmt, datefmt, style, validate)
-
-    #class MyHandler(log.Handler):
-        #def emit(self, record):
+    # class MyHandler(log.Handler):
+        # def emit(self, record):
             #print('custom handler called with\n', record)
 
     sh = log.StreamHandler(sys.stdout)
-    sh.setFormatter(MyFormatter('%(asctime)s %(filename)s L%(lineno)d T%(thread)d %(funcName)s: %(message)s'))
+    sh.setFormatter(LogFormatter('%(asctime)s %(filename)s L%(lineno)d T%(thread)d %(funcName)s: %(message)s'))
     log.getLogger().addHandler(sh)
 
 
@@ -54,44 +76,31 @@ def isPy38OrHigher():
 
 
 def supportTrapzezoidCorrection() -> bool:
-    return SdkVerson.startswith('3.6.200.10')
+    return SdkVerson.startswith('3.6.200.10') or SdkVerson.startswith('3.7.204.dev')
 
 
-class StopWatch():
-    def __init__(self):
-        self.start = time.monotonic()
+#class StopWatch():
+    #def __init__(self):
+        #self.start = time.monotonic()
 
-    def elapsed(self) -> float:
-        return time.monotonic() - self.start()
+    #def elapsed(self) -> float:
+        #return time.monotonic() - self.start()
 
-    def reset(self) -> None:
-        self.start = time.monotonic()
+    #def reset(self) -> None:
+        #self.start = time.monotonic()
 
-    def __str__(self) -> str:
-        return f'{self.__class__.__name__}(start={self.start}, elapsed={self.elapsed()})'
+    #def __str__(self) -> str:
+        #return f'{self.__class__.__name__}(start={self.start}, elapsed={self.elapsed()})'
 
-    __repr__ = __str__
+    #__repr__ = __str__
 
 
 LastAPICall = ''
-LogCallbacks = []
 
 
-def addLogCallback(func: Callable[[str], None]) -> None:
-    LogCallbacks.append(func)
-
-
-def removeLogCallback(func: Callable[[str], None]) -> None:
-    LogCallbacks.remove(func)
-
-
-def clearLogCallbacks() -> None:
-    LogCallbacks.clear()
-
-
-def MeasureTime(func):
+def APITime(func):
     @functools.wraps(func)
-    def wrapper(*args, **kwargs):
+    def API(*args, **kwargs):
         global LastAPICall
         argsstr = ', '.join(f"'{arg}'" if isinstance(arg, str) else str(arg) for arg in args if not isinstance(arg, RtcEngine))
         keystr = ', '.join('{}={}'.format(k, f"'{v}'" if isinstance(v, str) else v) for k, v in kwargs.items())
@@ -102,17 +111,13 @@ def MeasureTime(func):
                 argsstr = keystr
         LastAPICall = f'{func.__name__}({argsstr})'
         log.info(LastAPICall)
-        for callback in LogCallbacks:
-            callback(LastAPICall)
         start = time.monotonic()
         ret = func(*args, **kwargs)
         costTime = time.monotonic() - start
         logStr = f'{func.__name__} returns {ret}, costTime={costTime:.3} s'
         log.info(logStr)
-        for callback in LogCallbacks:
-            callback(logStr)
         return ret
-    return wrapper
+    return API
 
 
 class MyIntEnum(IntEnum):
@@ -193,6 +198,7 @@ class MediaSourceType(MyIntEnum):
     RtcImageGifSource = 10,
     RemoteVideoSource = 11,
     TranscodedVideoSource = 12,
+    UnknownMediaSource = 100,
 
 
 class VideoSourceType(MyIntEnum):
@@ -353,7 +359,7 @@ class ChannelMediaOptions():
     def convertNone(self):
         for key in self.__dict__:
             if not key.startswith('__') and self.__dict__[key] is None:
-                self.__dict__[key] = -1 # to c++ dll, -1 indicates c++ options is null
+                self.__dict__[key] = -1  # to c++ dll, -1 indicates c++ options is null
 
     def __str__(self) -> str:
         return f'{self.__class__.__name__}(channelProfile={self.channelProfile}, clientRole={self.clientRole}, '    \
@@ -589,7 +595,7 @@ class RtcEngine:
         self.dll = _DllClient.instance().dll
         self.callback = None
         self.printCallback = True
-        self.eventHandlerUserData = {}  #Dict[int, str]
+        self.eventHandlerUserData = {}  # Dict[int, str]
         self.rtcEngine = self.dll.createRtcEngine()
         self.pRtcEngine = ctypes.c_void_p(self.rtcEngine)
         self.rtcEngineEventHandler = self.dll.createRtcEngineEventHandler()
@@ -614,7 +620,7 @@ class RtcEngine:
         if self.callback:
             self.callback(self.eventHandlerUserData.get(eventHandler, "Channel"), callbackTimeSinceEpoch, funcName, jsonStr)
 
-    @MeasureTime
+    @APITime
     def release(self, sync: bool = True) -> None:
         if self.rtcEngine:
             log.info(f'will release RtcEngine=0x{self.rtcEngine:X}')
@@ -643,7 +649,7 @@ class RtcEngine:
         errorDesc = self.dll.getSdkErrorDescription(error)
         return errorDesc.decode('utf-8')
 
-    @MeasureTime
+    @APITime
     def initalize(self, context: RtcEngineContext, callback: Callable[[str, int, str, str], None], userData: str = 'Channel') -> int:
         self.callback = callback
         self.eventHandlerUserData[self.rtcEngineEventHandler] = userData
@@ -660,47 +666,47 @@ class RtcEngine:
                                   ctypes.c_char_p(logPath), context.logConfig.logSizeInKB, context.logConfig.logLevel)
         return ret
 
-    @MeasureTime
+    @APITime
     def setChannelProfile(self, profile: ChannelProfile) -> int:
         ret = self.dll.setChannelProfile(self.pRtcEngine, profile)
         return ret
 
-    @MeasureTime
+    @APITime
     def setClientRole(self, role: ClientRole) -> int:
         ret = self.dll.setClientRole(self.pRtcEngine, role)
         return ret
 
-    @MeasureTime
+    @APITime
     def enableAudio(self) -> int:
         ret = self.dll.enableAudio(self.pRtcEngine)
         return ret
 
-    @MeasureTime
+    @APITime
     def disableAudio(self) -> int:
         ret = self.dll.disableAudio(self.pRtcEngine)
         return ret
 
-    @MeasureTime
+    @APITime
     def enableVideo(self) -> int:
         ret = self.dll.enableVideo(self.pRtcEngine)
         return ret
 
-    @MeasureTime
+    @APITime
     def disableVideo(self) -> int:
         ret = self.dll.disableVideo(self.pRtcEngine)
         return ret
 
-    @MeasureTime
+    @APITime
     def enableLocalAudio(self, enabled: bool) -> int:
         ret = self.dll.enableLocalAudio(self.pRtcEngine, int(enabled))
         return ret
 
-    @MeasureTime
+    @APITime
     def enableLocalVideo(self, enabled: bool) -> int:
         ret = self.dll.enableLocalVideo(self.pRtcEngine, int(enabled))
         return ret
 
-    @MeasureTime
+    @APITime
     def registerVideoFrameObserver(self) -> int:
         ret = self.dll.registerVideoFrameObserver(self.pRtcEngine)
         return ret
@@ -723,7 +729,7 @@ class RtcEngine:
     def resetRenderVideoFrame(self) -> None:
         self.dll.resetRenderVideoFrame()
 
-    @MeasureTime
+    @APITime
     def setCameraCapturerConfiguration(self, cameraConfig: CameraCapturerConfiguration) -> int:
         if SdkVerson < '3.6.200':
             log.error(f'{SdkVerson} does not support this API')
@@ -733,36 +739,36 @@ class RtcEngine:
                                                       cameraConfig.width, cameraConfig.height, cameraConfig.frameRate)
         return ret
 
-    @MeasureTime
+    @APITime
     def setCameraDeviceOrientation(self, orientation: VideoOrientation, sourceType: VideoSourceType = VideoSourceType.CameraPrimary) -> int:
         ret = self.dll.setCameraDeviceOrientation(self.pRtcEngine, sourceType, orientation)
         return ret
 
-    @MeasureTime
+    @APITime
     def startPrimaryCameraCapture(self, cameraConfig: CameraCapturerConfiguration) -> int:
         deviceId = cameraConfig.deviceId.encode('utf-8')
         ret = self.dll.startPrimaryCameraCapture(self.pRtcEngine, ctypes.c_char_p(deviceId),
                                                  cameraConfig.width, cameraConfig.height, cameraConfig.frameRate)
         return ret
 
-    @MeasureTime
+    @APITime
     def stopPrimaryCameraCapture(self) -> int:
         ret = self.dll.stopPrimaryCameraCapture(self.pRtcEngine)
         return ret
 
-    @MeasureTime
+    @APITime
     def startSecondaryCameraCapture(self, cameraConfig: CameraCapturerConfiguration) -> int:
         deviceId = cameraConfig.deviceId.encode('utf-8')
         ret = self.dll.startSecondaryCameraCapture(self.pRtcEngine, ctypes.c_char_p(deviceId),
                                                    cameraConfig.width, cameraConfig.height, cameraConfig.frameRate)
         return ret
 
-    @MeasureTime
+    @APITime
     def stopSecondaryCameraCapture(self) -> int:
         ret = self.dll.stopSecondaryCameraCapture(self.pRtcEngine)
         return ret
 
-    @MeasureTime
+    @APITime
     def setVideoEncoderConfiguration(self, videoConfig: VideoEncoderConfiguration, connectionId: int = DefaultConnectionId) -> int:
         ret = self.dll.setVideoEncoderConfiguration(self.pRtcEngine, connectionId, videoConfig.width, videoConfig.height,
                                                     videoConfig.frameRate, videoConfig.bitrate, videoConfig.codecType,
@@ -770,7 +776,7 @@ class RtcEngine:
                                                     videoConfig.mirrorMode, videoConfig.orientationMode)
         return ret
 
-    @MeasureTime
+    @APITime
     def setVideoEncoderConfigurationEx(self, videoConfig: VideoEncoderConfiguration, connection: RtcConnection = RtcConnection()) -> int:
         channelName = connection.channelId.encode('utf-8') if connection.channelId != None else 0
         ret = self.dll.setVideoEncoderConfigurationEx(self.pRtcEngine, ctypes.c_char_p(channelName), connection.localUid,
@@ -779,7 +785,7 @@ class RtcEngine:
                                                       videoConfig.minBitrate, videoConfig.mirrorMode, videoConfig.orientationMode)
         return ret
 
-    @MeasureTime
+    @APITime
     def loadExtensionProvider(self, extensionLibPath: str) -> int:
         if SdkVerson < '3.6.200':
             log.error(f'{SdkVerson} does not support this API')
@@ -788,7 +794,7 @@ class RtcEngine:
         ret = self.dll.loadExtensionProvider(self.pRtcEngine, ctypes.c_char_p(extensionLibPath))
         return ret
 
-    @MeasureTime
+    @APITime
     def enableExtension(self, providerName: str, extensionName: str, enabled: bool,
                         sourceType: MediaSourceType = MediaSourceType.PrimaryCameraSource) -> int:
         if SdkVerson < '3.6.200':
@@ -800,7 +806,7 @@ class RtcEngine:
                                        ctypes.c_char_p(extensionName), int(enabled), sourceType)
         return ret
 
-    @MeasureTime
+    @APITime
     def setExtensionProperty(self, providerName: str, extensionName: str, key: str, jsonValue: str,
                              sourceType: MediaSourceType = MediaSourceType.PrimaryCameraSource) -> int:
         providerName = providerName.encode('utf-8')
@@ -811,7 +817,7 @@ class RtcEngine:
                                             ctypes.c_char_p(key), ctypes.c_char_p(jsonValue), sourceType)
         return ret
 
-    @MeasureTime
+    @APITime
     def setBeautyEffectOptions(self, enabled: bool, beautyOptions: BeautyOptions = BeautyOptions(),
                                sourceType: MediaSourceType = MediaSourceType.PrimaryCameraSource) -> int:
         ret = self.dll.setBeautyEffectOptions(self.pRtcEngine, int(enabled), beautyOptions.lighteningContrastLevel,
@@ -820,7 +826,7 @@ class RtcEngine:
                                               sourceType)
         return ret
 
-    @MeasureTime
+    @APITime
     def enableVirtualBackground(self, enabled: bool,
                                 backgroundSource: VirtualBackgroundSource,
                                 segProperty: SegmentationProperty,
@@ -834,7 +840,7 @@ class RtcEngine:
                                                sourceType)
         return ret
 
-    @MeasureTime
+    @APITime
     def enableBrightnessCorrection(self, enabled: bool, mode: BrightnessCorrectionMode = BrightnessCorrectionMode.AutoMode,
                                    sourceType: VideoSourceType = VideoSourceType.CameraPrimary) -> int:
         log.info(f'enabled={enabled}, mode={mode}, sourceType={sourceType}')
@@ -842,14 +848,14 @@ class RtcEngine:
         log.info(f'returns {ret}')
         return ret
 
-    @MeasureTime
+    @APITime
     def applyBrightnessCorrectionToRemote(self, uid: int, enabled: bool, mode: BrightnessCorrectionMode = BrightnessCorrectionMode.AutoMode) -> int:
         log.info(f'uid={uid}, enabled={enabled}, mode={mode}')
         ret = self.dll.applyBrightnessCorrectionToRemote(self.pRtcEngine, uid, int(enabled), mode)
         log.info(f'returns {ret}')
         return ret
 
-    @MeasureTime
+    @APITime
     def applyBrightnessCorrectionToRemoteEx(self, uid: int, enabled: bool, mode: BrightnessCorrectionMode = BrightnessCorrectionMode.AutoMode,
                                             connection: RtcConnection = RtcConnection()) -> int:
         channelName = connection.channelId.encode('utf-8') if connection.channelId != None else 0
@@ -857,19 +863,19 @@ class RtcEngine:
                                                            ctypes.c_char_p(channelName), connection.localUid)
         return ret
 
-    @MeasureTime
+    @APITime
     def enableLocalTrapezoidCorrection(self, enabled: bool, sourceType: VideoSourceType = VideoSourceType.CameraPrimary) -> int:
         ret = self.dll.enableLocalTrapezoidCorrection(self.pRtcEngine, int(enabled), sourceType)
         return ret
 
-    @MeasureTime
+    @APITime
     def setLocalTrapezoidCorrectionOptions(self, options: Dict, sourceType: VideoSourceType = VideoSourceType.CameraPrimary) -> int:
         jsStr = json.dumps(options, indent=4, ensure_ascii=False, sort_keys=True)
         jsStr = jsStr.encode('utf-8')
         ret = self.dll.setLocalTrapezoidCorrectionOptions(self.pRtcEngine, ctypes.c_char_p(jsStr), sourceType)
         return ret
 
-    @MeasureTime
+    @APITime
     def getLocalTrapezoidCorrectionOptions(self, sourceType: VideoSourceType = VideoSourceType.CameraPrimary) -> Tuple[Dict, int]:
         arrayType = ctypes.c_char * 1024
         charArray = arrayType()
@@ -881,26 +887,26 @@ class RtcEngine:
                 jsInfo = json.loads(jsStr)
         return jsInfo, ret
 
-    @MeasureTime
+    @APITime
     def enableRemoteTrapezoidCorrection(self, uid: int, enabled: bool) -> int:
         ret = self.dll.enableRemoteTrapezoidCorrection(self.pRtcEngine, uid, int(enabled))
         return ret
 
-    @MeasureTime
+    @APITime
     def enableRemoteTrapezoidCorrectionEx(self, uid: int, enabled: bool, connection: RtcConnection = RtcConnection()) -> int:
         channelName = connection.channelId.encode('utf-8') if connection.channelId != None else 0
         ret = self.dll.enableRemoteTrapezoidCorrectionEx(self.pRtcEngine, uid, int(enabled),
                                                          ctypes.c_char_p(channelName), connection.localUid)
         return ret
 
-    @MeasureTime
+    @APITime
     def setRemoteTrapezoidCorrectionOptions(self, uid: int, options: Dict) -> int:
         jsStr = json.dumps(options, indent=4, ensure_ascii=False, sort_keys=True)
         jsStr = jsStr.encode('utf-8')
         ret = self.dll.setRemoteTrapezoidCorrectionOptions(self.pRtcEngine, uid, ctypes.c_char_p(jsStr))
         return ret
 
-    @MeasureTime
+    @APITime
     def setRemoteTrapezoidCorrectionOptionsEx(self, uid: int, options: Dict, connection: RtcConnection = RtcConnection()) -> int:
         channelName = connection.channelId.encode('utf-8') if connection.channelId != None else 0
         jsStr = json.dumps(options, indent=4, ensure_ascii=False, sort_keys=True)
@@ -909,7 +915,7 @@ class RtcEngine:
                                                              ctypes.c_char_p(channelName), connection.localUid)
         return ret
 
-    @MeasureTime
+    @APITime
     def getRemoteTrapezoidCorrectionOptions(self, uid: int) -> Tuple[Dict, int]:
         arrayType = ctypes.c_char * 1024
         charArray = arrayType()
@@ -921,7 +927,7 @@ class RtcEngine:
                 jsInfo = json.loads(jsStr)
         return jsInfo, ret
 
-    @MeasureTime
+    @APITime
     def getRemoteTrapezoidCorrectionOptionsEx(self, uid: int, connection: RtcConnection = RtcConnection()) -> Tuple[Dict, int]:
         channelName = connection.channelId.encode('utf-8') if connection.channelId != None else 0
         arrayType = ctypes.c_char * 1024
@@ -935,48 +941,48 @@ class RtcEngine:
                 jsInfo = json.loads(jsStr)
         return jsInfo, ret
 
-    @MeasureTime
+    @APITime
     def applyTrapezoidCorrectionToRemote(self, uid: int, enabled: bool) -> int:
         ret = self.dll.applyTrapezoidCorrectionToRemote(self.pRtcEngine, uid, int(enabled))
         return ret
 
-    @MeasureTime
+    @APITime
     def applyTrapezoidCorrectionToRemoteEx(self, uid: int, enabled: bool, connection: RtcConnection = RtcConnection()) -> int:
         channelName = connection.channelId.encode('utf-8') if connection.channelId != None else 0
         ret = self.dll.applyTrapezoidCorrectionToRemoteEx(self.pRtcEngine, uid, int(enabled),
                                                           ctypes.c_char_p(channelName), connection.localUid)
         return ret
 
-    @MeasureTime
+    @APITime
     def applyVideoEncoderMirrorToRemote(self, uid: int, mirrorMode: VideoMirrorMode) -> int:
         ret = self.dll.applyVideoEncoderMirrorToRemote(self.pRtcEngine, uid, mirrorMode)
         return ret
 
-    @MeasureTime
+    @APITime
     def applyVideoEncoderMirrorToRemoteEx(self, uid: int, mirrorMode: VideoMirrorMode, connection: RtcConnection = RtcConnection()) -> int:
         channelName = connection.channelId.encode('utf-8') if connection.channelId != None else 0
         ret = self.dll.applyVideoEncoderMirrorToRemoteEx(self.pRtcEngine, uid, mirrorMode,
                                                          ctypes.c_char_p(channelName), connection.localUid)
         return ret
 
-    @MeasureTime
+    @APITime
     def applyVideoOrientationToRemote(self, uid: int, orientation: VideoOrientation) -> int:
         ret = self.dll.applyVideoOrientationToRemote(self.pRtcEngine, uid, orientation)
         return ret
 
-    @MeasureTime
+    @APITime
     def applyVideoOrientationToRemoteEx(self, uid: int, orientation: VideoOrientation, connection: RtcConnection = RtcConnection()) -> int:
         channelName = connection.channelId.encode('utf-8') if connection.channelId != None else 0
         ret = self.dll.applyVideoOrientationToRemoteEx(self.pRtcEngine, uid, orientation,
                                                        ctypes.c_char_p(channelName), connection.localUid)
         return ret
 
-    @MeasureTime
+    @APITime
     def setLocalVideoMirrorMode(self, mirrorMode: VideoMirrorMode) -> int:
         ret = self.dll.setLocalVideoMirrorMode(self.pRtcEngine, mirrorMode)
         return ret
 
-    @MeasureTime
+    @APITime
     def setLocalRenderMode(self, renderMode: RenderMode, mirrorMode: VideoMirrorMode, sourceType: VideoSourceType = VideoSourceType.CameraPrimary) -> int:
         if supportTrapzezoidCorrection():
             ret = self.dll.setLocalRenderMode(self.pRtcEngine, renderMode, mirrorMode, sourceType)
@@ -984,24 +990,24 @@ class RtcEngine:
             ret = self.dll.setLocalRenderMode(self.pRtcEngine, renderMode, mirrorMode)
         return ret
 
-    @MeasureTime
+    @APITime
     def setRemoteRenderMode(self, uid: int, renderMode: RenderMode, mirrorMode: VideoMirrorMode) -> int:
         ret = self.dll.setRemoteRenderMode(self.pRtcEngine, uid, renderMode, mirrorMode)
         return ret
 
-    @MeasureTime
+    @APITime
     def setupLocalVideo(self, videoCanvas: VideoCanvas) -> int:
         ret = self.dll.setupLocalVideo(self.pRtcEngine, videoCanvas.uid, ctypes.c_void_p(videoCanvas.view), videoCanvas.mirrorMode,
                                        videoCanvas.renderMode, videoCanvas.sourceType, int(videoCanvas.isScreenView), videoCanvas.setupMode)
         return ret
 
-    @MeasureTime
+    @APITime
     def setupRemoteVideo(self, videoCanvas: VideoCanvas, connectionId: int = DefaultConnectionId) -> int:
         ret = self.dll.setupRemoteVideo(self.pRtcEngine, videoCanvas.uid, ctypes.c_void_p(videoCanvas.view), videoCanvas.mirrorMode,
                                         videoCanvas.renderMode, videoCanvas.sourceType, int(videoCanvas.isScreenView), connectionId)
         return ret
 
-    @MeasureTime
+    @APITime
     def setupRemoteVideoEx(self, videoCanvas: VideoCanvas, connection: RtcConnection) -> int:
         if SdkVerson < '3.6.200':
             log.error(f'{SdkVerson} does not support this API')
@@ -1011,7 +1017,7 @@ class RtcEngine:
                                           videoCanvas.renderMode, ctypes.c_char_p(channelName), connection.localUid)
         return ret
 
-    @MeasureTime
+    @APITime
     def startPreview(self, sourceType: VideoSourceType = None) -> int:
         if sourceType is not None and SdkVerson >= '3.6.200':
             ret = self.dll.startPreview2(self.pRtcEngine, sourceType)
@@ -1019,7 +1025,7 @@ class RtcEngine:
             ret = self.dll.startPreview(self.pRtcEngine)
         return ret
 
-    @MeasureTime
+    @APITime
     def stopPreview(self, sourceType: VideoSourceType = None) -> int:
         if sourceType is not None and SdkVerson >= '3.6.200':
             ret = self.dll.stopPreview2(self.pRtcEngine, sourceType)
@@ -1027,7 +1033,7 @@ class RtcEngine:
             ret = self.dll.stopPreview(self.pRtcEngine)
         return ret
 
-    @MeasureTime
+    @APITime
     def takeSnapshot(self, channel: str, uid: int, filePath: str, rect: Tuple[float, float, float, float] = None) -> int:
         if SdkVerson.startswith('3.6.200.10'):
             channel = channel.encode('utf-8')
@@ -1045,7 +1051,7 @@ class RtcEngine:
         ret = self.dll.takeSnapshot(self.pRtcEngine, ctypes.c_char_p(channel), uid, ctypes.c_char_p(filePath), self.pRtcEngienEventHandler)
         return ret
 
-    @MeasureTime
+    @APITime
     def startServerSuperResolution(self, token: str, imagePath: str, scale: float, timeoutSeconds: int) -> int:
         if not SdkVerson.startswith('3.6.200.10'):
             log.error(f'{SdkVerson} does not support this API')
@@ -1054,7 +1060,7 @@ class RtcEngine:
         ret = self.dll.startServerSuperResolution(self.pRtcEngine, ctypes.c_char_p(token), ctypes.c_char_p(imagePath), ctypes.c_float(scale), timeoutSeconds)
         return ret
 
-    @MeasureTime
+    @APITime
     def setContentInspect(self, enable: bool, cloudWork: bool) -> int:
         if SdkVerson < '3.7.200':
             log.error(f'{SdkVerson} does not support this API')
@@ -1062,7 +1068,7 @@ class RtcEngine:
         ret = self.dll.setContentInspect(self.pRtcEngine, int(enable), int(cloudWork))
         return ret
 
-    @MeasureTime
+    @APITime
     def startScreenCaptureByScreenRect(self, screenRect: Rectangle, regionRect: Rectangle, params: ScreenCaptureParameters) -> int:
         excludeWindowList = 0
         excludeWindowCount = 0
@@ -1076,7 +1082,7 @@ class RtcEngine:
                                                       excludeWindowList, excludeWindowCount)
         return ret
 
-    @MeasureTime
+    @APITime
     def startPrimaryScreenCapture(self, screenRect: Rectangle, regionRect: Rectangle, params: ScreenCaptureParameters) -> int:
         excludeWindowList = 0
         excludeWindowCount = 0
@@ -1090,7 +1096,7 @@ class RtcEngine:
                                                  excludeWindowList, excludeWindowCount)
         return ret
 
-    @MeasureTime
+    @APITime
     def startSecondaryScreenCapture(self, screenRect: Rectangle, regionRect: Rectangle, params: ScreenCaptureParameters) -> int:
         excludeWindowList = 0
         excludeWindowCount = 0
@@ -1104,26 +1110,26 @@ class RtcEngine:
                                                    excludeWindowList, excludeWindowCount)
         return ret
 
-    @MeasureTime
+    @APITime
     def startScreenCaptureByWindowId(self, view: int, regionRect: Rectangle, params: ScreenCaptureParameters) -> int:
         ret = self.dll.startScreenCaptureByWindowId(self.pRtcEngine, ctypes.c_void_p(view),
                                                     regionRect.x, regionRect.y, regionRect.width, regionRect.height,
                                                     params.width, params.height, params.fps, params.bitrate)
         return ret
 
-    @MeasureTime
+    @APITime
     def stopScreenCapture(self) -> int:
         ret = self.dll.stopScreenCapture(self.pRtcEngine)
         return ret
 
-    @MeasureTime
+    @APITime
     def registerLocalUserAccount(self, appId: str, userAccount: str) -> int:
         appId = appId.encode('utf-8')
         userAccount = userAccount.encode('utf-8')
         ret = self.dll.registerLocalUserAccount(self.pRtcEngine, ctypes.c_char_p(appId), ctypes.c_char_p(userAccount))
         return ret
 
-    @MeasureTime
+    @APITime
     def setExternalVideoSource(self, enable: bool) -> int:
         ret = self.dll.setExternalVideoSource(self.pRtcEngine, int(enable))
         return ret
@@ -1137,7 +1143,7 @@ class RtcEngine:
         ret = self.dll.pushVideoFrameEx(self.pRtcEngine, rawData, videoFormat, width, height, ctypes.c_char_p(channelName), connection.localUid)
         return ret
 
-    @MeasureTime
+    @APITime
     def joinChannel(self, channelName: str, uid: int = 0, token: str = '', info: str = '') -> int:
         channelName = channelName.encode('utf-8')
         token = token.encode('utf-8')
@@ -1145,7 +1151,7 @@ class RtcEngine:
         ret = self.dll.joinChannel(self.pRtcEngine, ctypes.c_char_p(channelName), uid, ctypes.c_char_p(token), ctypes.c_char_p(info))
         return ret
 
-    @MeasureTime
+    @APITime
     def joinChannelWithOptions(self, channelName: str, uid: int = 0, token: str = '', options: ChannelMediaOptions = ChannelMediaOptions()) -> int:
         channelName = channelName.encode('utf-8')
         token = token.encode('utf-8')
@@ -1166,7 +1172,7 @@ class RtcEngine:
                                               options.publishCustomVideoTrack)
         return ret
 
-    @MeasureTime
+    @APITime
     def updateChannelMediaOptions(self, options: ChannelMediaOptions) -> int:
         options.convertNone()
         ret = self.dll.updateChannelMediaOptions(self.pRtcEngine,
@@ -1183,7 +1189,7 @@ class RtcEngine:
                                                  options.publishCustomVideoTrack)
         return ret
 
-    @MeasureTime
+    @APITime
     def joinChannelWithUserAccount(self, channelName: str, userAccount: str, token: str = '', options: ChannelMediaOptions = None) -> int:
         channelName = channelName.encode('utf-8')
         userAccount = userAccount.encode('utf-8')
@@ -1210,12 +1216,12 @@ class RtcEngine:
                                                        options.publishCustomVideoTrack)
         return ret
 
-    @MeasureTime
+    @APITime
     def leaveChannel(self) -> int:
         ret = self.dll.leaveChannel(self.pRtcEngine)
         return ret
 
-    @MeasureTime
+    @APITime
     def joinChannelEx(self, connection: RtcConnection, token: str = '', options: ChannelMediaOptions = ChannelMediaOptions()) -> int:
         channelName = connection.channelId.encode('utf-8') if connection.channelId != None else 0
         token = token.encode('utf-8')
@@ -1238,7 +1244,7 @@ class RtcEngine:
                                      options.publishCustomVideoTrack)
         return ret
 
-    @MeasureTime
+    @APITime
     def updateChannelMediaOptionsEx(self, connection: RtcConnection, options: ChannelMediaOptions) -> int:
         channelName = connection.channelId.encode('utf-8') if connection.channelId != None else 0
         options.convertNone()
@@ -1258,45 +1264,45 @@ class RtcEngine:
                                                    options.publishCustomVideoTrack)
         return ret
 
-    @MeasureTime
+    @APITime
     def leaveChannelEx(self, connection: RtcConnection) -> int:
         channelName = connection.channelId.encode('utf-8')
         ret = self.dll.leaveChannelEx(self.pRtcEngine, ctypes.c_char_p(channelName), connection.localUid)
         return ret
 
-    @MeasureTime
+    @APITime
     def muteLocalAudioStream(self, mute: bool) -> int:
         ret = self.dll.muteLocalAudioStream(self.pRtcEngine, int(mute))
         return ret
 
-    @MeasureTime
+    @APITime
     def muteLocalVideoStream(self, mute: bool) -> int:
         ret = self.dll.muteLocalVideoStream(self.pRtcEngine, int(mute))
         return ret
 
-    @MeasureTime
+    @APITime
     def muteRemoteAudioStream(self, uid: int, mute: bool, connectionId: int = DefaultConnectionId) -> int:
         ret = self.dll.muteRemoteAudioStream(self.pRtcEngine, uid, int(mute), connectionId)
         return ret
 
-    @MeasureTime
+    @APITime
     def muteRemoteVideoStream(self, uid: int, mute: bool, connectionId: int = DefaultConnectionId) -> int:
         ret = self.dll.muteRemoteVideoStream(self.pRtcEngine, uid, int(mute), connectionId)
         return ret
 
-    @MeasureTime
+    @APITime
     def createDataStream(self, reliable: bool = True, ordered: bool = True, connectionId: int = DefaultConnectionId) -> Tuple[int, int]:
         streamId = ctypes.c_int(0)
         ret = self.dll.createDataStream(self.pRtcEngine, ctypes.byref(streamId), int(reliable), int(ordered), connectionId)
         return (ret, streamId.value)
 
-    @MeasureTime
+    @APITime
     def sendStreamMessage(self, streamId: int, data: str, connectionId: int = DefaultConnectionId) -> int:
         data = data.encode('utf-8')
         ret = self.dll.sendStreamMessage(self.pRtcEngine, streamId, ctypes.c_char_p(data), len(data), connectionId)
         return ret
 
-    @MeasureTime
+    @APITime
     def getVideoDeviceId(self) -> str:
         arrayType = ctypes.c_char * 512
         charArray = arrayType()
@@ -1306,35 +1312,57 @@ class RtcEngine:
             deviceId = charArray.value.decode('utf-8')
         return deviceId
 
-    @MeasureTime
+    @APITime
     def setVideoDeviceId(self, deviceId: str) -> int:
         deviceId = deviceId.encode('utf-8')
         ret = self.dll.setVideoDeviceId(self.pRtcEngine, ctypes.c_char_p(deviceId))
         return ret
 
-    @MeasureTime
+    @APITime
     def getVideoDevices(self) -> List[Tuple[str, str]]:
         arrayType = ctypes.c_char * 5210
         charArray = arrayType()
         ret = self.dll.getVideoDevices(self.pRtcEngine, charArray, len(charArray))
         devices = []
-        if ret == 0:
-            parts = charArray.value.decode('utf-8').split('||')
-            log.info(f'device count {parts[0]}')
-            for part in parts[1:-1]:
+        if ret == 0 and charArray.value:
+            formatedStr = charArray.value.decode('utf-8')
+            parts = formatedStr.split('||')
+            log.info(f'device count {len(parts)}')
+            for part in parts:
                 deviceParts = part.split('%%')
-                #log.info(f'device {deviceParts}')
-                if len(deviceParts) == 3:
-                    devices.append((deviceParts[1], deviceParts[2]))
+                #log.info(f'device {deviceParts}')  #name, id
+                devices.append((deviceParts[0], deviceParts[1]))
         return devices
 
-    @MeasureTime
+    @APITime
+    def getVideoDeviceNumberOfCapabilities(self, deviceId: str) -> int:
+        deviceId = deviceId.encode('utf-8')
+        return self.dll.getVideoDeviceNumberOfCapabilities(self.pRtcEngine, ctypes.c_char_p(deviceId))
+
+    @APITime
+    def getVideoDeviceCapabilities(self, deviceId: str) -> List[Tuple[int, int, int]]:
+        deviceId = deviceId.encode('utf-8')
+        arrayType = ctypes.c_char * 5210
+        charArray = arrayType()
+        ret = self.dll.getVideoDeviceCapabilities(self.pRtcEngine, ctypes.c_char_p(deviceId), charArray, len(charArray))
+        capabilities = []
+        if ret == 0 and charArray.value:
+            formatedStr = charArray.value.decode('utf-8')
+            parts = formatedStr.split('||')
+            log.info(f'capabilities count {len(parts)}')
+            for part in parts:
+                capParts = part.split('|')
+                #log.info(f'device {deviceParts}')  # width, height, fps
+                capabilities.append((capParts[0], capParts[1], capParts[2]))
+        return capabilities
+
+    @APITime
     def setParameters(self, params: str) -> int:
         params = params.encode('utf-8')
         ret = self.dll.setParameters(self.pRtcEngine, ctypes.c_char_p(params))
         return ret
 
-    @MeasureTime
+    @APITime
     def getStringParameter(self, params: str, maxLen: int = 128) -> Tuple[int, str]:
         params = params.encode('utf-8')
         arrayType = ctypes.c_char * maxLen
@@ -1342,7 +1370,7 @@ class RtcEngine:
         ret = self.dll.getStringParameter(self.pRtcEngine, ctypes.c_char_p(params), charArray, len(charArray))
         return ret, charArray.value.decode('utf-8')
 
-    @MeasureTime
+    @APITime
     def getObjectParameter(self, params: str, maxLen: int = 512) -> Tuple[int, str]:
         params = params.encode('utf-8')
         arrayType = ctypes.c_char * maxLen
@@ -1350,21 +1378,21 @@ class RtcEngine:
         ret = self.dll.getObjectParameter(self.pRtcEngine, ctypes.c_char_p(params), charArray, len(charArray))
         return ret, charArray.value.decode('utf-8')
 
-    @MeasureTime
+    @APITime
     def getBoolParameter(self, params: str) -> Tuple[int, bool]:
         params = params.encode('utf-8')
         cValue = ctypes.c_int32(0)
         ret = self.dll.getBoolParameter(self.pRtcEngine, ctypes.c_char_p(params), ctypes.byref(cValue))
         return ret, bool(cValue.value)
 
-    @MeasureTime
+    @APITime
     def getIntParameter(self, params: str) -> Tuple[int, int]:
         params = params.encode('utf-8')
         cValue = ctypes.c_int32(0)
         ret = self.dll.getIntParameter(self.pRtcEngine, ctypes.c_char_p(params), ctypes.byref(cValue))
         return ret, cValue.value
 
-    @MeasureTime
+    @APITime
     def getNumberParameter(self, params: str) -> Tuple[int, float]:
         params = params.encode('utf-8')
         cValue = ctypes.c_double(0.0)

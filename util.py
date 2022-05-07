@@ -41,7 +41,8 @@ def printx(*values, sep: str = ' ', end: str = None, flush: bool = False, caller
 
 def setConsoleTitle(title: str) -> None:
     #need colorama.init
-    sys.stdout.write(f'\x1b]2;{title}\x07')
+    if sys.stdout:
+        sys.stdout.write(f'\x1b]2;{title}\x07')
 
 
 def getStrBetween(src: str, left: str, right: str = None, start: int = 0, end: int = None) -> Tuple[str, int]:
@@ -263,7 +264,7 @@ def renameFilesInDir(src: str, find: str, replace: str, log: bool = True) -> int
 
 def walkZip(zipPath: str, getFileObjCondition: Callable[[zipfile.ZipInfo], bool] = None) -> Iterator[Tuple[bool, zipfile.ZipInfo, zipfile.ZipExtFile]]:
     """
-    getFileObjCondition: getFileObjCondition(fileName:str)->bool
+    getFileObjCondition: getFileObjCondition(zipInfo:ZipInfo)->bool
     return tuple(isDir:bool, zipInfo:ZipInfo, fileObj:ZipExtFile)
     zipInfo.is_dir(), zipInfo.filename, ...
     """
