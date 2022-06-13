@@ -88,7 +88,7 @@ def custom1Camera1Test(self) -> None:
     self.viewUsingIndex.add(viewIndex)
 
     #cameras
-    devices = self.rtcEngine.getVideoDevices()
+    devices = self.rtcEngine.enumerateVideoDevices()
 
     if len(devices) < 2:
         agsdk.log.warn('video devices count < 2')

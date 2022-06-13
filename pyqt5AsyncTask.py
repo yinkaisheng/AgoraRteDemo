@@ -3,7 +3,7 @@
 import time
 from typing import (Any, Callable, Dict, List, Tuple)
 import threading
-from PyQt5.QtCore import (QObject, QThread, pyqtSignal, pyqtSlot)
+from PyQt5.QtCore import (QObject, QThread, QTimer, pyqtSignal, pyqtSlot)
 import util
 
 
@@ -36,6 +36,19 @@ class AsyncTask():
         self._taskNotifiers = {}
         self._taskId = 0
         self._msgIdName = {MsgIDThreadExit: 'MsgIDThreadExit'}
+        self.delayCallTimers = {}
+
+    def delayCall(self, timeMs: int, func: Callable[[None], None]) -> None:
+        timer = QTimer()
+        timer.setSingleShot(True)
+        timer.timeout.connect(self.onDelayCallTimer)
+        timer.start(timeMs)
+        self.delayCallTimers[timer] = func
+
+    def onDelayCallTimer(self) -> None:
+        timer = self.sender()
+        func = self.delayCallTimers.pop(timer)
+        func()
 
     def setMsgIDName(self, msgId: int, name: str) -> None:
         self._msgIdName[msgId] = name

@@ -52,8 +52,8 @@ def joinChannelExTest(self) -> None:
     self.rtcEngine.setupLocalVideo(videoCanvas)
     self.checkSDKResult(ret)
 
-    #self.rtcEngine.startPreview(sourceType)
-    #self.checkSDKResult(ret)
+    self.rtcEngine.startPreview(sourceType)
+    self.checkSDKResult(ret)
 
     options = agsdk.ChannelMediaOptions()
     options.autoSubscribeAudio = True

@@ -36,7 +36,7 @@ def camera2Screen2Test(self) -> None:
     if ret != 0:
         return
 
-    devices = self.rtcEngine.getVideoDevices()
+    devices = self.rtcEngine.enumerateVideoDevices()
 
     if len(devices) < 2:
         print('video devices count < 2')

@@ -16,8 +16,8 @@ from typing import (Any, Callable, Dict, List, Iterable, Tuple)
 DefaultConnectionId = 0
 ExePath = os.path.abspath(sys.argv[0])
 ExeDir, ExeNameWithExt = os.path.split(ExePath)
+ExeNameNoExt = os.path.splitext(ExeNameWithExt)[0]
 os.chdir(ExeDir)
-ExeName = ExeNameWithExt.split('.')[0]
 LogDir = os.path.join(ExeDir, 'agsdklog')
 if os.path.exists('Lib') and not os.path.exists('agorasdk'):
     SdkDir = os.path.join('Lib', 'agorasdk')
@@ -79,18 +79,18 @@ def supportTrapzezoidCorrection() -> bool:
     return SdkVerson.startswith('3.6.200.10') or SdkVerson.startswith('3.7.204.dev')
 
 
-#class StopWatch():
-    #def __init__(self):
+# class StopWatch():
+    # def __init__(self):
         #self.start = time.monotonic()
 
-    #def elapsed(self) -> float:
-        #return time.monotonic() - self.start()
+    # def elapsed(self) -> float:
+        # return time.monotonic() - self.start()
 
-    #def reset(self) -> None:
+    # def reset(self) -> None:
         #self.start = time.monotonic()
 
-    #def __str__(self) -> str:
-        #return f'{self.__class__.__name__}(start={self.start}, elapsed={self.elapsed()})'
+    # def __str__(self) -> str:
+        # return f'{self.__class__.__name__}(start={self.start}, elapsed={self.elapsed()})'
 
     #__repr__ = __str__
 
@@ -564,8 +564,6 @@ class _DllClient:
             self.dll.getVersion.restype = ctypes.c_char_p
             self.dll.getSdkErrorDescription.restype = ctypes.c_char_p
             self.dll.createRtcEngineEventHandler.restype = ctypes.c_void_p
-            if sys.platform == 'win32':
-                self.dll.initializeGdiPlus()
         else:
             self.dll = None
             log.error(f'Can not load dll. path={SdkBinDirFull}')
@@ -704,6 +702,11 @@ class RtcEngine:
     @APITime
     def enableLocalVideo(self, enabled: bool) -> int:
         ret = self.dll.enableLocalVideo(self.pRtcEngine, int(enabled))
+        return ret
+
+    @APITime
+    def registerAudioFrameObserver(self) -> int:
+        ret = self.dll.registerAudioFrameObserver(self.pRtcEngine)
         return ret
 
     @APITime
@@ -1035,21 +1038,19 @@ class RtcEngine:
 
     @APITime
     def takeSnapshot(self, channel: str, uid: int, filePath: str, rect: Tuple[float, float, float, float] = None) -> int:
+        channel = channel.encode('utf-8')
+        filePath = filePath.encode('utf-8')
         if SdkVerson.startswith('3.6.200.10'):
-            channel = channel.encode('utf-8')
-            filePath = filePath.encode('utf-8')
             ret = self.dll.takeSnapshot(self.pRtcEngine, ctypes.c_char_p(channel), uid, ctypes.c_char_p(filePath),
                                         ctypes.c_float(rect[0]), ctypes.c_float(rect[1]), ctypes.c_float(rect[2]), ctypes.c_float(rect[3]),
                                         self.pRtcEngienEventHandler)
             return ret
-
-        if SdkVerson < '3.7.200':
+        elif SdkVerson.startswith('arsenal'):
+            ret = self.dll.takeSnapshot(self.pRtcEngine, uid, ctypes.c_char_p(filePath))
+            return ret
+        else:
             log.error(f'{SdkVerson} does not support this API')
             return -1
-        channel = channel.encode('utf-8')
-        filePath = filePath.encode('utf-8')
-        ret = self.dll.takeSnapshot(self.pRtcEngine, ctypes.c_char_p(channel), uid, ctypes.c_char_p(filePath), self.pRtcEngienEventHandler)
-        return ret
 
     @APITime
     def startServerSuperResolution(self, token: str, imagePath: str, scale: float, timeoutSeconds: int) -> int:
@@ -1303,26 +1304,23 @@ class RtcEngine:
         return ret
 
     @APITime
-    def getVideoDeviceId(self) -> str:
+    def getVideoDevice(self) -> Tuple[int, str]:
         arrayType = ctypes.c_char * 512
         charArray = arrayType()
-        ret = self.dll.getVideoDeviceId(self.pRtcEngine, charArray, len(charArray))
-        deviceId = ''
-        if ret == 0:
-            deviceId = charArray.value.decode('utf-8')
-        return deviceId
+        ret = self.dll.getVideoDevice(self.pRtcEngine, charArray)
+        deviceId = charArray.value.decode('utf-8') if ret == 0 else ''
+        return ret, deviceId
 
     @APITime
-    def setVideoDeviceId(self, deviceId: str) -> int:
+    def setVideoDevice(self, deviceId: str) -> int:
         deviceId = deviceId.encode('utf-8')
-        ret = self.dll.setVideoDeviceId(self.pRtcEngine, ctypes.c_char_p(deviceId))
+        ret = self.dll.setVideoDevice(self.pRtcEngine, ctypes.c_char_p(deviceId))
         return ret
 
-    @APITime
-    def getVideoDevices(self) -> List[Tuple[str, str]]:
-        arrayType = ctypes.c_char * 5210
+    def _enumerateAVDevices(self, dllFunc: Callable[[ctypes.c_void_p, ctypes.c_char_p, int], int]) -> List[Tuple[str, str]]:
+        arrayType = ctypes.c_char * 5120
         charArray = arrayType()
-        ret = self.dll.getVideoDevices(self.pRtcEngine, charArray, len(charArray))
+        ret = dllFunc(self.pRtcEngine, charArray, len(charArray))
         devices = []
         if ret == 0 and charArray.value:
             formatedStr = charArray.value.decode('utf-8')
@@ -1330,9 +1328,13 @@ class RtcEngine:
             log.info(f'device count {len(parts)}')
             for part in parts:
                 deviceParts = part.split('%%')
-                #log.info(f'device {deviceParts}')  #name, id
+                # log.info(f'device {deviceParts}')  #name, id
                 devices.append((deviceParts[0], deviceParts[1]))
         return devices
+
+    @APITime
+    def enumerateVideoDevices(self) -> List[Tuple[str, str]]:
+        return self._enumerateAVDevices(self.dll.enumerateVideoDevices)
 
     @APITime
     def getVideoDeviceNumberOfCapabilities(self, deviceId: str) -> int:
@@ -1342,7 +1344,7 @@ class RtcEngine:
     @APITime
     def getVideoDeviceCapabilities(self, deviceId: str) -> List[Tuple[int, int, int]]:
         deviceId = deviceId.encode('utf-8')
-        arrayType = ctypes.c_char * 5210
+        arrayType = ctypes.c_char * 5120
         charArray = arrayType()
         ret = self.dll.getVideoDeviceCapabilities(self.pRtcEngine, ctypes.c_char_p(deviceId), charArray, len(charArray))
         capabilities = []
@@ -1352,9 +1354,76 @@ class RtcEngine:
             log.info(f'capabilities count {len(parts)}')
             for part in parts:
                 capParts = part.split('|')
-                #log.info(f'device {deviceParts}')  # width, height, fps
+                # log.info(f'device {deviceParts}')  # width, height, fps
                 capabilities.append((capParts[0], capParts[1], capParts[2]))
         return capabilities
+
+    @APITime
+    def enumeratePlaybackDevices(self) -> List[Tuple[str, str]]:
+        return self._enumerateAVDevices(self.dll.enumeratePlaybackDevices)
+
+    @APITime
+    def enumerateRecordingDevices(self) -> List[Tuple[str, str]]:
+        return self._enumerateAVDevices(self.dll.enumerateRecordingDevices)
+
+    @APITime
+    def setPlaybackDevice(self, deviceId: str) -> int:
+        deviceId = deviceId.encode('utf-8')
+        ret = self.dll.setPlaybackDevice(self.pRtcEngine, ctypes.c_char_p(deviceId))
+        return ret
+
+    @APITime
+    def getPlaybackDevice(self) -> Tuple[int, str]:
+        arrayType = ctypes.c_char * 512
+        charArray = arrayType()
+        ret = self.dll.getPlaybackDevice(self.pRtcEngine, charArray)
+        deviceId = charArray.value.decode('utf-8') if ret == 0 else ''
+        return ret, deviceId
+
+    @APITime
+    def setRecordingDevice(self, deviceId: str) -> int:
+        deviceId = deviceId.encode('utf-8')
+        ret = self.dll.setRecordingDevice(self.pRtcEngine, ctypes.c_char_p(deviceId))
+        return ret
+
+    @APITime
+    def getRecordingDevice(self) -> Tuple[int, str]:
+        arrayType = ctypes.c_char * 512
+        charArray = arrayType()
+        ret = self.dll.getRecordingDevice(self.pRtcEngine, charArray)
+        deviceId = charArray.value.decode('utf-8') if ret == 0 else ''
+        return ret, deviceId
+
+    @APITime
+    def startPlaybackDeviceTest(self, audioFilePath: str) -> int:
+        audioFilePath = audioFilePath.encode('utf-8')
+        ret = self.dll.startPlaybackDeviceTest(self.pRtcEngine, ctypes.c_char_p(audioFilePath))
+        return ret
+
+    @APITime
+    def stopPlaybackDeviceTest(self) -> int:
+        ret = self.dll.stopPlaybackDeviceTest(self.pRtcEngine)
+        return ret
+
+    @APITime
+    def startRecordingDeviceTest(self, indicationInterval: int) -> int:
+        ret = self.dll.startRecordingDeviceTest(self.pRtcEngine, indicationInterval)
+        return ret
+
+    @APITime
+    def stopRecordingDeviceTest(self) -> int:
+        ret = self.dll.stopRecordingDeviceTest(self.pRtcEngine)
+        return ret
+
+    @APITime
+    def startAudioDeviceLoopbackTest(self, indicationInterval: int) -> int:
+        ret = self.dll.startAudioDeviceLoopbackTest(self.pRtcEngine, indicationInterval)
+        return ret
+
+    @APITime
+    def stopAudioDeviceLoopbackTest(self) -> int:
+        ret = self.dll.stopAudioDeviceLoopbackTest(self.pRtcEngine)
+        return ret
 
     @APITime
     def setParameters(self, params: str) -> int:

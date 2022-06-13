@@ -31,16 +31,16 @@ def printx(*values, sep: str = ' ', end: str = None, flush: bool = False, caller
             if scriptFileName != _SelfFileName:
                 break
             frameCount += 1
-        timestr = f'{t.year}-{t.month:02}-{t.day:02} {t.hour:02}:{t.minute:02}:{t.second:02}.{t.microsecond // 1000:03} {frame.f_code.co_name}[{frame.f_lineno}]:'
+        timestr = f'{t.year}-{t.month:02}-{t.day:02} {t.hour:02}:{t.minute:02}:{t.second:02}.{t.microsecond // 1000:03} L{frame.f_lineno} {frame.f_code.co_name}:'
     else:
-        timestr = f'{t.year}-{t.month:02}-{t.day:02} {t.hour:02}:{t.minute:02}:{t.second:02}.{t.microsecond // 1000:03} :'
+        timestr = f'{t.year}-{t.month:02}-{t.day:02} {t.hour:02}:{t.minute:02}:{t.second:02}.{t.microsecond // 1000:03}:'
     print(timestr, *values, sep=sep, end=end)
     if flush and sys.stdout:
         sys.stdout.flush()
 
 
 def setConsoleTitle(title: str) -> None:
-    #need colorama.init
+    # need colorama.init
     if sys.stdout:
         sys.stdout.write(f'\x1b]2;{title}\x07')
 

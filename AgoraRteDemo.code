@@ -22,7 +22,7 @@ name=getVideoDeviceCapabilities
 editable=0
 code=
 
-devices = self.rtcEngine.getVideoDevices()
+devices = self.rtcEngine.enumerateVideoDevices()
 outputs = []
 for deviceName, deviceId in devices:
     capabilities = self.rtcEngine.getVideoDeviceCapabilities(deviceId)
@@ -55,6 +55,49 @@ self.ret = self.rtcEngine.setExtensionProperty('agora', 'beauty', 'trapezoid_cor
     "enable": 1
 }
 ''')
+
+----boundary----
+
+name=startPlaybackDeviceTest
+editable=0
+code=
+
+self.ret = self.rtcEngine.startPlaybackDeviceTest(r'D:\Media\Music\Lovelovelove.mp3')
+self.delayCall(timeMs=10000, func=self.rtcEngine.stopPlaybackDeviceTest)
+
+----boundary----
+
+name=stopPlaybackDeviceTest
+editable=0
+code=
+
+self.ret = self.rtcEngine.stopPlaybackDeviceTest()
+
+----boundary----
+
+name=startRecordingDeviceTest
+editable=0
+code=
+
+self.ret = self.rtcEngine.startRecordingDeviceTest(indicationInterval=1000)
+self.delayCall(timeMs=10000, func=self.rtcEngine.stopRecordingDeviceTest)
+
+----boundary----
+
+name=stopRecordingDeviceTest
+editable=0
+code=
+
+self.ret = self.rtcEngine.stopRecordingDeviceTest()
+
+----boundary----
+
+name=setLocalTrapezoidCorrectionOptions
+editable=0
+code=
+
+option = {'assistLine': 1, 'autoCorrect': 1}
+self.ret = self.rtcEngine.setLocalTrapezoidCorrectionOptions(option, sourceType=0)
 
 ----boundary----
 

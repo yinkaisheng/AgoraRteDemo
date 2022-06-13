@@ -112,7 +112,7 @@ class SelectSdkDlg(QDialog):
         if not os.path.exists(sdkBinPath):
             print(f'---- {sdkBinPath} does not exist')
             # load dll in develop code path
-            binDirs = util.getFileText(os.path.join(agsdk.ExeDir, agsdk.ExeName + '.dllpath')).splitlines()
+            binDirs = util.getFileText(os.path.join(agsdk.ExeDir, agsdk.ExeNameNoExt + '.dllpath')).splitlines()
             for binDir in binDirs:
                 binPath = os.path.join(binDir, 'agora_rtc_sdk.dll')
                 if os.path.exists(binPath):
@@ -195,9 +195,14 @@ class CodeDlg(QDialog):
         self.apiCombox.currentIndexChanged.connect(self.onComboxApiSelectionChanged)
         hLayout.addWidget(self.apiCombox)
 
-        button = QPushButton('add')
+        button = QPushButton('append')
         button.setMinimumHeight(BUTTON_HEIGHT)
-        button.clicked.connect(self.onClickAdd)
+        button.clicked.connect(self.onClickAppend)
+        hLayout.addWidget(button)
+
+        button = QPushButton('replace')
+        button.setMinimumHeight(BUTTON_HEIGHT)
+        button.clicked.connect(self.onClickReplace)
         hLayout.addWidget(button)
 
         button = QPushButton('e&xec')
@@ -262,7 +267,7 @@ class CodeDlg(QDialog):
     def onClickReload(self) -> None:
         self.loadApiList()
 
-    def onClickAdd(self) -> None:
+    def onClickAppend(self) -> None:
         index = self.apiCombox.currentIndex()
         if index < len(self.singleApis):
             code = self.singleApis[self.apiCombox.currentText()]
@@ -270,6 +275,10 @@ class CodeDlg(QDialog):
         else:
             code = self.multiApis[self.apiCombox.currentText()]
             self.codeEdit.setPlainText(code)
+
+    def onClickReplace(self) -> None:
+        self.onClickClearCode()
+        self.onClickAppend()
 
     def onClickRun(self) -> None:
         button = self.sender()
@@ -303,7 +312,7 @@ class CodeDlg(QDialog):
 
     def loadApiList(self) -> None:
         curIndex = self.apiCombox.currentIndex()
-        apiPath = os.path.join(agsdk.ExeDir, agsdk.ExeName + '.code')
+        apiPath = os.path.join(agsdk.ExeDir, agsdk.ExeNameNoExt + '.code')
         text = util.getFileText(apiPath)
         self.singleApis = {}
         self.multiApis = {}
@@ -337,7 +346,7 @@ class CodeDlg(QDialog):
             self.apiCombox.setCurrentIndex(curIndex)
 
     def saveApiList(self) -> None:
-        apiPath = os.path.join(agsdk.ExeDir, agsdk.ExeName + '.code')
+        apiPath = os.path.join(agsdk.ExeDir, agsdk.ExeNameNoExt + '.code')
         text = '\n'.join(f'name={name}\neditable=0\ncode=\n{content}\n{self.boundary}\n' for name, content in self.singleApis.items())
         util.writeTextFile(text, apiPath)
         text = '\n'.join(f'name={name}\neditable=1\ncode=\n{content}\n{self.boundary}\n' for name, content in self.multiApis.items())
@@ -696,7 +705,7 @@ class MainWindow(QMainWindow, astask.AsyncTask):
     def __init__(self):
         super().__init__()
         agsdk.log.info(f'sys.paltform={sys.platform}, ExePath={agsdk.ExePath}, cwd={os.getcwd()}, uithread={threading.get_ident()}')
-        self.configPath = os.path.join(agsdk.ExeDir, agsdk.ExeName + '.config')
+        self.configPath = os.path.join(agsdk.ExeDir, agsdk.ExeNameNoExt + '.config')
         self.configJson = util.jsonFromFile(self.configPath)
         self.configJson.setdefault('appNameList', [])
         self.configJson.setdefault('appNameIndex', 0)
@@ -954,13 +963,13 @@ class MainWindow(QMainWindow, astask.AsyncTask):
         getVideoDevicesButton.setToolTip('IVideoDeviceManager::enumerateVideoDevices')
         getVideoDevicesButton.clicked.connect(self.onClickGetVideoDevices)
         hLayout.addWidget(getVideoDevicesButton)
-        setVideoDeviceIdButton = QPushButton('setVideoDeviceId')
+        setVideoDeviceIdButton = QPushButton('setVideoDevice')
         setVideoDeviceIdButton.setToolTip('IVideoDeviceManager::setDevice')
-        setVideoDeviceIdButton.clicked.connect(self.onClickSetVideoDeviceId)
+        setVideoDeviceIdButton.clicked.connect(self.onClickSetVideoDevice)
         hLayout.addWidget(setVideoDeviceIdButton)
-        getVideoDeviceIdButton = QPushButton('getVideoDeviceId')
+        getVideoDeviceIdButton = QPushButton('getVideoDevice')
         getVideoDeviceIdButton.setToolTip('IVideoDeviceManager::getDevice')
-        getVideoDeviceIdButton.clicked.connect(self.onClickGetVideoDeviceId)
+        getVideoDeviceIdButton.clicked.connect(self.onClickGetVideoDevice)
         hLayout.addWidget(getVideoDeviceIdButton)
         hLayout.addStretch(1)
 
@@ -1971,27 +1980,27 @@ class MainWindow(QMainWindow, astask.AsyncTask):
     def onClickGetVideoDevices(self) -> None:
         if not self.rtcEngine:
             return
-        self.videoDevices = self.rtcEngine.getVideoDevices()
+        self.videoDevices = self.rtcEngine.enumerateVideoDevices()
         self.videoDevicesCombox.clear()
         if self.videoDevices:
             self.videoDevicesCombox.addItems(it[0] for it in self.videoDevices)
             self.videoDevicesCombox.setCurrentIndex(-1)
 
-    def onClickSetVideoDeviceId(self) -> None:
+    def onClickSetVideoDevice(self) -> None:
         if not self.rtcEngine:
             return
         curIndex = self.videoDevicesCombox.currentIndex()
         if curIndex < 0:
             return
         deviceId = self.videoDevices[curIndex][1]
-        ret = self.rtcEngine.setVideoDeviceId(deviceId)
+        ret = self.rtcEngine.setVideoDevice(deviceId)
         self.checkSDKResult(ret)
 
-    def onClickGetVideoDeviceId(self) -> None:
+    def onClickGetVideoDevice(self) -> None:
         if not self.rtcEngine:
             return
-        deviceId = self.rtcEngine.getVideoDeviceId()
-        print(f'getVideoDeviceId "{deviceId}"')
+        ret, deviceId = self.rtcEngine.getVideoDevice()
+        print(f'getVideoDevice result={ret}, deviceId="{deviceId}"')
 
     def onClickSetCameraCapturerConfiguration(self) -> None:
         if not self.rtcEngine:
@@ -2253,7 +2262,7 @@ class MainWindow(QMainWindow, astask.AsyncTask):
             image = self.pixmap.toImage()
             # if not os.path.exists('agorapush.bmp'):
                 # image.save('agorapush.bmp')
-            bits = image.constBits()
+            bits = image.constBits()    # type(bits) == PyQt5.sip.voidptr
             bits.setsize(image.byteCount())
             rawData = ctypes.c_void_p(int(bits))
             videoFormat = agorasdk.VideoPixelFormat.RGBA
@@ -2746,7 +2755,7 @@ class MainWindow(QMainWindow, astask.AsyncTask):
         if ret != 0:
             return
 
-        devices = self.rtcEngine.getVideoDevices()
+        devices = self.rtcEngine.enumerateVideoDevices()
 
         if len(devices) < 2:
             print('video devices count < 2')
