@@ -1,6 +1,6 @@
-def camera2Screen1Test(self) -> None:
+def camera1Screen1Test(self) -> None:
     channelName = 'sdktest'
-    uidCount = 3
+    uidCount = 2
     self.localUids = []
     for i in range(uidCount):
         self.localUids.append(random.randint(10000, 100000) + random.randint(1000, 10000) + random.randint(100, 1000) + random.randint(10, 100))
@@ -97,53 +97,6 @@ def camera2Screen1Test(self) -> None:
     self.viewUsingIndex.add(viewIndex)
     self.viewIndex2EncoderMirrorMode[viewIndex] = videoCanvas.mirrorMode
 
-    #second camera
-    viewIndex += 1
-    uid = self.localUids[viewIndex]
-    token = ''
-
-    sourceType = agsdk.VideoSourceType.CameraSecondary
-    videoCanvas = agsdk.VideoCanvas(uid=0, view=0)
-    videoCanvas.view = int(self.videoLabels[viewIndex].winId())
-    videoCanvas.sourceType = sourceType
-    videoCanvas.mirrorMode = agsdk.VideoMirrorMode.Disabled
-    videoCanvas.renderMode = agsdk.RenderMode.Fit
-    videoCanvas.isScreenView = False
-    self.rtcEngine.setupLocalVideo(videoCanvas)
-    self.checkSDKResult(ret)
-
-    #for deviceName, deviceId in devices:
-        #pass
-    deviceId = devices[1][1]
-    cameraConfig = agsdk.CameraCapturerConfiguration()
-    cameraConfig.deviceId = deviceId
-    cameraConfig.width = 640
-    cameraConfig.height = 360
-    cameraConfig.frameRate = 15
-    ret = self.rtcEngine.startSecondaryCameraCapture(cameraConfig)
-    self.checkSDKResult(ret)
-
-    self.rtcEngine.startPreview(sourceType)
-    self.checkSDKResult(ret)
-
-    options = agsdk.ChannelMediaOptions()
-    options.autoSubscribeAudio = False
-    options.autoSubscribeVideo = False
-    options.publishAudioTrack = False
-    options.publishCameraTrack = False
-    options.publishSecondaryCameraTrack = True
-
-    self.uidExEdit.setText(str(uid))
-    self.channelNameEx = channelName
-    self.channelExOptions = options
-    self.rtcConnection = agsdk.RtcConnection(channelName, uid)
-    ret = self.rtcEngine.joinChannelEx(self.rtcConnection, token, options)
-    self.checkSDKResult(ret)
-    self.joinedEx = True
-
-    self.viewUsingIndex.add(viewIndex)
-    self.viewIndex2EncoderMirrorMode[viewIndex] = videoCanvas.mirrorMode
-
     # first screen share
     viewIndex += 1
     uid = self.localUids[viewIndex]
@@ -186,5 +139,5 @@ def camera2Screen1Test(self) -> None:
 
     self.viewUsingIndex.add(viewIndex)
 
-MainWindow.camera2Screen1Test = camera2Screen1Test
-self.camera2Screen1Test()
+MainWindow.camera1Screen1Test = camera1Screen1Test
+self.camera1Screen1Test()

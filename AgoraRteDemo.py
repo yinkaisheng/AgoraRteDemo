@@ -1815,7 +1815,7 @@ class MainWindow(QMainWindow, astask.AsyncTask):
     def onSelectSdkCallback(self, sdkBinDir: str) -> None:
         self.selectSdkDlg.close()
         agsdk.chooseSdkBinDir(sdkBinDir)
-        if agsdk.agorasdk.SdkVerson < '3.6.200':
+        if agsdk.agorasdk.SdkVersion < '3.6.200':
             self.setCameraConfigButton.setEnabled(False)
             self.loadExtensionProviderButton.setEnabled(False)
             self.enableExtensionButton.setEnabled(False)
@@ -2089,7 +2089,7 @@ class MainWindow(QMainWindow, astask.AsyncTask):
         viewHandle = int(self.videoLabels[viewIndex].winId())
         mirrorValue = agsdk.VideoMirrorMode(int(self.mirrorCombox.currentText()[-1]))
         canvas = agsdk.VideoCanvas(uid=0, view=viewHandle, mirrorMode=mirrorValue, renderMode=self.defaultRenderMode, sourceType=self.curVideoSourceType)
-        if agsdk.agorasdk.SdkVerson >= '3.8.200':
+        if agsdk.agorasdk.SdkVersion >= '3.8.200':
             canvas.setupMode = agsdk.ViewSetupMode.Add
         ret = self.rtcEngine.setupLocalVideo(canvas)
         self.checkSDKResult(ret)
@@ -2115,7 +2115,7 @@ class MainWindow(QMainWindow, astask.AsyncTask):
     def onClickLoadExtensionProvider(self) -> None:
         if not self.rtcEngine:
             return
-        if agsdk.agorasdk.SdkVerson < '3.6.200':
+        if agsdk.agorasdk.SdkVersion < '3.6.200':
             return
         for binName in self.configJson["loadExtensions"]:
             binPath = os.path.join(agsdk.agorasdk.SdkBinDirFull, binName)
@@ -2135,13 +2135,13 @@ class MainWindow(QMainWindow, astask.AsyncTask):
     def onClickEnableExtension(self) -> None:
         if not self.rtcEngine:
             return
-        if agsdk.agorasdk.SdkVerson < '3.6.200':
+        if agsdk.agorasdk.SdkVersion < '3.6.200':
             return
         for extName in self.loadedExtensions:
             if extName.startswith('libagora_video_process'):
                 ret = self.rtcEngine.enableExtension('agora', 'beauty', True, self.curMediaSourceType)
                 self.checkSDKResult(ret)
-                if agsdk.agorasdk.SdkVerson.startswith('3.7.204.dev'):
+                if agsdk.agorasdk.SdkVersion.startswith('3.7.204.dev'):
                     ret = self.rtcEngine.enableExtension('agora', 'remote_beauty', True, agsdk.MediaSourceType.UnknownMediaSource)
                     self.checkSDKResult(ret)
             elif extName.startswith('libagora_segmentation'):
@@ -2771,7 +2771,7 @@ class MainWindow(QMainWindow, astask.AsyncTask):
         videoCanvas.mirrorMode = agsdk.VideoMirrorMode.Disabled
         videoCanvas.renderMode = agsdk.RenderMode.Fit
         videoCanvas.isScreenView = False
-        if agsdk.agorasdk.SdkVerson >= '3.8.200':
+        if agsdk.agorasdk.SdkVersion >= '3.8.200':
             videoCanvas.setupMode = agsdk.ViewSetupMode.Add
         self.rtcEngine.setupLocalVideo(videoCanvas)
         self.checkSDKResult(ret)
@@ -2821,7 +2821,7 @@ class MainWindow(QMainWindow, astask.AsyncTask):
         videoCanvas.mirrorMode = agsdk.VideoMirrorMode.Disabled
         videoCanvas.renderMode = agsdk.RenderMode.Fit
         videoCanvas.isScreenView = False
-        if agsdk.agorasdk.SdkVerson >= '3.8.200':
+        if agsdk.agorasdk.SdkVersion >= '3.8.200':
             videoCanvas.setupMode = agsdk.ViewSetupMode.Add
         self.rtcEngine.setupLocalVideo(videoCanvas)
         self.checkSDKResult(ret)
@@ -2877,7 +2877,7 @@ class MainWindow(QMainWindow, astask.AsyncTask):
         videoCanvas.renderMode = agsdk.RenderMode.Fit
         videoCanvas.isScreenView = False
         videoCanvas.isScreenView = False
-        if agsdk.agorasdk.SdkVerson >= '3.8.200':
+        if agsdk.agorasdk.SdkVersion >= '3.8.200':
             videoCanvas.setupMode = agsdk.ViewSetupMode.Add
         self.rtcEngine.setupLocalVideo(videoCanvas)
         self.checkSDKResult(ret)

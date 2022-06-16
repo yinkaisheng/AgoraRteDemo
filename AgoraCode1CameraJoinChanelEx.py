@@ -1,6 +1,9 @@
 def joinChannelExTest(self) -> None:
     channelName = 'sdktest'
-    self.localUids = [1000]
+    uidCount = 1
+    self.localUids = []
+    for i in range(uidCount):
+        self.localUids.append(random.randint(10000, 100000) + random.randint(1000, 10000) + random.randint(100, 1000) + random.randint(10, 100))
     token = ''
     info = ''
     self.autoSubscribeVideoEx = True
@@ -31,6 +34,9 @@ def joinChannelExTest(self) -> None:
     self.checkSDKResult(ret)
     if ret != 0:
         return
+
+    ret = self.rtcEngine.registerVideoFrameObserver()
+    self.checkSDKResult(ret)
 
     ret = self.rtcEngine.enableVideo()
     self.checkSDKResult(ret)

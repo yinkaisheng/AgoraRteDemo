@@ -27,7 +27,7 @@ SdkDirFull = os.path.join(ExeDir, SdkDir)  # d:\Codes\Python\RteDemo\agorasdk
 # the followings must be referenced by full name, such as agorasdk.agorasdk.SdkBinDir
 SdkBinDir = ''  # binx86_3.6.200
 SdkBinDirFull = ''  # d:\Codes\Python\RteDemo\agorasdk\binx86_3.6.200
-SdkVerson = ''  # 3.6.200, arsenal
+SdkVersion = ''  # 3.6.200, arsenal
 
 if not os.path.exists(LogDir):
     os.makedirs(LogDir)
@@ -76,7 +76,7 @@ def isPy38OrHigher():
 
 
 def supportTrapzezoidCorrection() -> bool:
-    return SdkVerson.startswith('3.6.200.10') or SdkVerson.startswith('3.7.204.dev')
+    return SdkVersion.startswith('3.6.200.10') or SdkVersion.startswith('3.7.204.dev')
 
 
 # class StopWatch():
@@ -575,14 +575,14 @@ class _DllClient:
 
 def chooseSdkBinDir(sdkBinDir: str):
     '''sdkBinDir: str, such as 'binx86_3.6.200.100' '''
-    global SdkBinDir, SdkBinDirFull, SdkVerson
+    global SdkBinDir, SdkBinDirFull, SdkVersion
     SdkBinDir = sdkBinDir
-    SdkVerson = SdkBinDir.split('_', 2)[-1]
+    SdkVersion = SdkBinDir.split('_', 1)[-1]
     if ExeDir.endswith(SdkDir):  # for run agorasdk.py directlly
         SdkBinDirFull = os.path.join(ExeDir, SdkBinDir)
     else:
         SdkBinDirFull = os.path.join(ExeDir, SdkDir, SdkBinDir)
-    print(f'SdkBinDir={SdkBinDir}, SdkVerson={SdkVerson}, SdkBinDirFull={SdkBinDirFull}')
+    print(f'SdkBinDir={SdkBinDir}, SdkVersion={SdkVersion}, SdkBinDirFull={SdkBinDirFull}')
 
 
 RtcEngineEventCFuncCallback = ctypes.CFUNCTYPE(None, ctypes.c_void_p, ctypes.c_int64, ctypes.c_char_p, ctypes.c_char_p)
@@ -734,8 +734,8 @@ class RtcEngine:
 
     @APITime
     def setCameraCapturerConfiguration(self, cameraConfig: CameraCapturerConfiguration) -> int:
-        if SdkVerson < '3.6.200':
-            log.error(f'{SdkVerson} does not support this API')
+        if SdkVersion < '3.6.200':
+            log.error(f'{SdkVersion} does not support this API')
             return -1
         deviceId = cameraConfig.deviceId.encode('utf-8')
         ret = self.dll.setCameraCapturerConfiguration(self.pRtcEngine, ctypes.c_char_p(deviceId),
@@ -790,8 +790,8 @@ class RtcEngine:
 
     @APITime
     def loadExtensionProvider(self, extensionLibPath: str) -> int:
-        if SdkVerson < '3.6.200':
-            log.error(f'{SdkVerson} does not support this API')
+        if SdkVersion < '3.6.200':
+            log.error(f'{SdkVersion} does not support this API')
             return -1
         extensionLibPath = extensionLibPath.encode('utf-8')
         ret = self.dll.loadExtensionProvider(self.pRtcEngine, ctypes.c_char_p(extensionLibPath))
@@ -800,8 +800,8 @@ class RtcEngine:
     @APITime
     def enableExtension(self, providerName: str, extensionName: str, enabled: bool,
                         sourceType: MediaSourceType = MediaSourceType.PrimaryCameraSource) -> int:
-        if SdkVerson < '3.6.200':
-            log.error(f'{SdkVerson} does not support this API')
+        if SdkVersion < '3.6.200':
+            log.error(f'{SdkVersion} does not support this API')
             return -1
         providerName = providerName.encode('utf-8')
         extensionName = extensionName.encode('utf-8')
@@ -1012,8 +1012,8 @@ class RtcEngine:
 
     @APITime
     def setupRemoteVideoEx(self, videoCanvas: VideoCanvas, connection: RtcConnection) -> int:
-        if SdkVerson < '3.6.200':
-            log.error(f'{SdkVerson} does not support this API')
+        if SdkVersion < '3.6.200':
+            log.error(f'{SdkVersion} does not support this API')
             return -1
         channelName = connection.channelId.encode('utf-8')
         ret = self.dll.setupRemoteVideoEx(self.pRtcEngine, videoCanvas.uid, ctypes.c_void_p(videoCanvas.view), videoCanvas.mirrorMode,
@@ -1022,7 +1022,7 @@ class RtcEngine:
 
     @APITime
     def startPreview(self, sourceType: VideoSourceType = None) -> int:
-        if sourceType is not None and SdkVerson >= '3.6.200':
+        if sourceType is not None and SdkVersion >= '3.6.200':
             ret = self.dll.startPreview2(self.pRtcEngine, sourceType)
         else:
             ret = self.dll.startPreview(self.pRtcEngine)
@@ -1030,7 +1030,7 @@ class RtcEngine:
 
     @APITime
     def stopPreview(self, sourceType: VideoSourceType = None) -> int:
-        if sourceType is not None and SdkVerson >= '3.6.200':
+        if sourceType is not None and SdkVersion >= '3.6.200':
             ret = self.dll.stopPreview2(self.pRtcEngine, sourceType)
         else:
             ret = self.dll.stopPreview(self.pRtcEngine)
@@ -1039,34 +1039,34 @@ class RtcEngine:
     @APITime
     def takeSnapshot(self, uid: int, filePath: str, rect: Tuple[float, float, float, float] = None) -> int:
         filePath = filePath.encode('utf-8')
-        if SdkVerson.startswith('3.6.200.104'):
+        if SdkVersion.startswith('3.6.200.104'):
             ret = self.dll.takeSnapshot(self.pRtcEngine, uid, ctypes.c_char_p(filePath),
                                         ctypes.c_float(rect[0]), ctypes.c_float(rect[1]), ctypes.c_float(rect[2]), ctypes.c_float(rect[3]))
             return ret
-        elif SdkVerson >= '3.8.200':
+        elif SdkVersion >= '3.8.200':
             ret = self.dll.takeSnapshot(self.pRtcEngine, uid, ctypes.c_char_p(filePath))
             return ret
         else:
-            log.error(f'{SdkVerson} does not support this API')
+            log.error(f'{SdkVersion} does not support this API')
             return -1
 
     @APITime
     def takeSnapshotEx(self, uid: int, filePath: str, rect: Tuple[float, float, float, float], connection: RtcConnection) -> int:
         filePath = filePath.encode('utf-8')
-        if SdkVerson.startswith('3.6.200.104'):
+        if SdkVersion.startswith('3.6.200.104'):
             channel = connection.channelId.encode('utf-8')
             ret = self.dll.takeSnapshotEx(self.pRtcEngine, uid, ctypes.c_char_p(filePath),
                                           ctypes.c_float(rect[0]), ctypes.c_float(rect[1]), ctypes.c_float(rect[2]), ctypes.c_float(rect[3]),
                                           ctypes.c_char_p(channel), connection.localUid)
             return ret
         else:
-            log.error(f'{SdkVerson} does not support this API')
+            log.error(f'{SdkVersion} does not support this API')
             return -1
 
     @APITime
     def startServerSuperResolution(self, token: str, imagePath: str, scale: float, timeoutSeconds: int) -> int:
-        if not SdkVerson.startswith('3.6.200.10'):
-            log.error(f'{SdkVerson} does not support this API')
+        if not SdkVersion.startswith('3.6.200.10'):
+            log.error(f'{SdkVersion} does not support this API')
         token = token.encode('utf-8')
         imagePath = imagePath.encode('utf-8')
         ret = self.dll.startServerSuperResolution(self.pRtcEngine, ctypes.c_char_p(token), ctypes.c_char_p(imagePath), ctypes.c_float(scale), timeoutSeconds)
@@ -1074,8 +1074,8 @@ class RtcEngine:
 
     @APITime
     def setContentInspect(self, enable: bool, cloudWork: bool) -> int:
-        if SdkVerson < '3.7.200':
-            log.error(f'{SdkVerson} does not support this API')
+        if SdkVersion < '3.7.200':
+            log.error(f'{SdkVersion} does not support this API')
             return -1
         ret = self.dll.setContentInspect(self.pRtcEngine, int(enable), int(cloudWork))
         return ret
