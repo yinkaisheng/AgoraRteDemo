@@ -1037,16 +1037,27 @@ class RtcEngine:
         return ret
 
     @APITime
-    def takeSnapshot(self, channel: str, uid: int, filePath: str, rect: Tuple[float, float, float, float] = None) -> int:
-        channel = channel.encode('utf-8')
+    def takeSnapshot(self, uid: int, filePath: str, rect: Tuple[float, float, float, float] = None) -> int:
         filePath = filePath.encode('utf-8')
-        if SdkVerson.startswith('3.6.200.10'):
-            ret = self.dll.takeSnapshot(self.pRtcEngine, ctypes.c_char_p(channel), uid, ctypes.c_char_p(filePath),
-                                        ctypes.c_float(rect[0]), ctypes.c_float(rect[1]), ctypes.c_float(rect[2]), ctypes.c_float(rect[3]),
-                                        self.pRtcEngienEventHandler)
+        if SdkVerson.startswith('3.6.200.104'):
+            ret = self.dll.takeSnapshot(self.pRtcEngine, uid, ctypes.c_char_p(filePath),
+                                        ctypes.c_float(rect[0]), ctypes.c_float(rect[1]), ctypes.c_float(rect[2]), ctypes.c_float(rect[3]))
             return ret
-        elif SdkVerson.startswith('arsenal'):
+        elif SdkVerson >= '3.8.200':
             ret = self.dll.takeSnapshot(self.pRtcEngine, uid, ctypes.c_char_p(filePath))
+            return ret
+        else:
+            log.error(f'{SdkVerson} does not support this API')
+            return -1
+
+    @APITime
+    def takeSnapshotEx(self, uid: int, filePath: str, rect: Tuple[float, float, float, float], connection: RtcConnection) -> int:
+        filePath = filePath.encode('utf-8')
+        if SdkVerson.startswith('3.6.200.104'):
+            channel = connection.channelId.encode('utf-8')
+            ret = self.dll.takeSnapshotEx(self.pRtcEngine, uid, ctypes.c_char_p(filePath),
+                                          ctypes.c_float(rect[0]), ctypes.c_float(rect[1]), ctypes.c_float(rect[2]), ctypes.c_float(rect[3]),
+                                          ctypes.c_char_p(channel), connection.localUid)
             return ret
         else:
             log.error(f'{SdkVerson} does not support this API')
@@ -1315,6 +1326,16 @@ class RtcEngine:
     def setVideoDevice(self, deviceId: str) -> int:
         deviceId = deviceId.encode('utf-8')
         ret = self.dll.setVideoDevice(self.pRtcEngine, ctypes.c_char_p(deviceId))
+        return ret
+
+    @APITime
+    def startVideoDeviceTest(self, view: int) -> int:
+        ret = self.dll.startVideoDeviceTest(self.pRtcEngine, ctypes.c_void_p(view))
+        return ret
+
+    @APITime
+    def stopVideoDeviceTest(self) -> int:
+        ret = self.dll.stopVideoDeviceTest(self.pRtcEngine)
         return ret
 
     def _enumerateAVDevices(self, dllFunc: Callable[[ctypes.c_void_p, ctypes.c_char_p, int], int]) -> List[Tuple[str, str]]:

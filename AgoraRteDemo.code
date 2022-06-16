@@ -33,6 +33,16 @@ self.codeDlg.outputEdit.appendPlainText(''.join(outputs))
 
 ----boundary----
 
+name=startDeviceTest
+editable=0
+code=
+
+view = int(self.videoLabels[viewIndex].winId())
+self.ret = self.rtcEngine.startVideoDeviceTest(view)
+self.delayCall(timeMs=10000, func=self.rtcEngine.stopVideoDeviceTest)
+
+----boundary----
+
 name=trapezoid_corr_option
 editable=0
 code=
@@ -155,9 +165,25 @@ def onSnapshotTaken(self, userData: str, callbackTimeSinceEpoch: int, funcName: 
 MainWindow.onSnapshotTaken = onSnapshotTaken
 self.rtcEngineEventHandler['onSnapshotTaken'] = self.onSnapshotTaken
 
-channelName = self.channelNameEdit.text().strip()
 uid = 0
-self.ret = self.rtcEngine.takeSnapshot(channelName, uid, r'd:/downloads/snap.jpg', rect=(0.0, 0.0, 0.75, 0.75))
+self.ret = self.rtcEngine.takeSnapshot(uid, r'snap.jpg', rect=(0.0, 0.0, 0.75, 0.75))
+
+----boundary----
+
+name=takeSnapshotEx
+editable=0
+code=
+
+def onSnapshotTaken(self, userData: str, callbackTimeSinceEpoch: int, funcName: str, jsStr: str, jsInfo: Dict) -> None:
+    self.codeDlg.outputEdit.appendPlainText(f'{funcName}: {jsStr}\n')
+    if jsInfo['errCode'] == 0 and jsInfo['filePath']:
+        subprocess.Popen(jsInfo['filePath'], shell=True)
+MainWindow.onSnapshotTaken = onSnapshotTaken
+self.rtcEngineEventHandler['onSnapshotTaken'] = self.onSnapshotTaken
+
+rtcConnection = agsdk.RtcConnection(self.channelNameEdit.text().strip(), int(self.uidExEdit.text()))
+uid = 0
+self.ret = self.rtcEngine.takeSnapshotEx(uid, r'snap.jpg', rect=(0.0, 0.0, 0.75, 0.75), connection=rtcConnection)
 
 ----boundary----
 
@@ -172,7 +198,9 @@ def onServerSuperResolutionResult(self, userData: str, callbackTimeSinceEpoch: i
 MainWindow.onServerSuperResolutionResult = onServerSuperResolutionResult
 self.rtcEngineEventHandler['onServerSuperResolutionResult'] = self.onServerSuperResolutionResult
 
-self.ret = self.rtcEngine.startServerSuperResolution(self.configJson['tokenUid'], r'd:/downloads/snap.jpg', 2.0, 5)
+token = self.configJson['tokenUid']
+token = 'fakeToken'
+self.ret = self.rtcEngine.startServerSuperResolution(token, r'snap.jpg', 2.0, 5)
 
 ----boundary----
 
@@ -182,7 +210,9 @@ code=
 def onSnapshotTaken(self, userData: str, callbackTimeSinceEpoch: int, funcName: str, jsStr: str, jsInfo: Dict) -> None:
     self.codeDlg.outputEdit.appendPlainText(f'{funcName}: {jsStr}\n')
     if jsInfo['errCode'] == 0 and jsInfo['filePath']:
-        self.rtcEngine.startServerSuperResolution(self.configJson['tokenUid'], jsInfo['filePath'], 2.0, 5)
+        token = self.configJson['tokenUid']
+        token = 'fakeToken'
+        self.rtcEngine.startServerSuperResolution(token, jsInfo['filePath'], 2.0, 5)
 MainWindow.onSnapshotTaken = onSnapshotTaken
 self.rtcEngineEventHandler['onSnapshotTaken'] = self.onSnapshotTaken
 
@@ -193,8 +223,7 @@ def onServerSuperResolutionResult(self, userData: str, callbackTimeSinceEpoch: i
 MainWindow.onServerSuperResolutionResult = onServerSuperResolutionResult
 self.rtcEngineEventHandler['onServerSuperResolutionResult'] = self.onServerSuperResolutionResult
 
-channelName = self.channelNameEdit.text().strip()
 uid = 0
-self.ret = self.rtcEngine.takeSnapshot(channelName, uid, r'd:/downloads/snap.jpg', rect=(0.25, 0.25, 0.75, 0.75))
+self.ret = self.rtcEngine.takeSnapshot(uid, r'snap.jpg', rect=(0.0, 0.0, 0.5, 0.5))
 
 ----boundary----
