@@ -1,0 +1,24 @@
+name=rtc.enable_debug_log
+json=
+{
+    "rtc.enable_debug_log": true
+}
+
+----boundary----
+
+name=rtc.video.playout_delay_min/max
+json=
+{
+    "rtc.video.playout_delay_min": 0,
+    "rtc.video.playout_delay_max": 0
+}
+
+----boundary----
+
+name=rtc.video.video_min_framerate
+json=
+{
+    "che.video.video_min_framerate": 1
+}
+
+----boundary----

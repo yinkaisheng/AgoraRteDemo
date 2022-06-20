@@ -171,6 +171,80 @@ class TipDlg(QDialog):
         self.activateWindow()
 
 
+class ParametersDlg(QDialog):
+    def __init__(self, parent: QObject = None):
+        super(ParametersDlg, self).__init__(parent)
+        self.mainWindow = parent
+        self.setWindowFlags(Qt.Dialog | Qt.WindowCloseButtonHint)
+        self.setWindowTitle(f"setParameters")
+        # self.setAttribute(Qt.WA_DeleteOnClose)
+        self.resize(600, 400)
+        vLayout = QVBoxLayout()
+        self.setLayout(vLayout)
+
+        hLayout = QHBoxLayout()
+        vLayout.addLayout(hLayout)
+
+        self.parametersCombox = QComboBox()
+        self.parametersCombox.setStyleSheet('QAbstractItemView::item {height: 22px;}')
+        self.parametersCombox.setView(QListView())
+        self.parametersCombox.setMinimumHeight(24)
+        self.parametersCombox.currentIndexChanged.connect(self.onComboxParametersSelectionChanged)
+        hLayout.addWidget(self.parametersCombox)
+
+        button = QPushButton('setParameters')
+        button.setMinimumHeight(BUTTON_HEIGHT)
+        button.clicked.connect(self.onClickSetParameters)
+        hLayout.addWidget(button)
+
+        self.jsonEdit = QCodeEditor()
+        self.jsonEdit.setStyleSheet('QPlainTextEdit{font-size:16px;font-family:Consolas;background-color:rgb(204,232,207);}')
+        vLayout.addWidget(self.jsonEdit)
+
+        self.resultEdit = QLineEdit()
+        vLayout.addWidget(self.resultEdit)
+
+        self.loadParametersList()
+
+    def onComboxParametersSelectionChanged(self, index: int) -> None:
+        if index >= 0:
+            jsonText = self.parameters[self.parametersCombox.currentText()]
+            self.jsonEdit.setPlainText(jsonText)
+            self.resultEdit.clear()
+
+    def onClickSetParameters(self) -> None:
+        if self.mainWindow.rtcEngine:
+            parametersText = self.jsonEdit.toPlainText().strip()
+            if parametersText:
+                ret = self.mainWindow.rtcEngine.setParameters(parametersText)
+                self.resultEdit.setText(f'result: {ret}')
+
+    def loadParametersList(self) -> None:
+        curIndex = self.parametersCombox.currentIndex()
+        apiPath = os.path.join(agsdk.ExeDir, agsdk.ExeNameNoExt + '.parameters')
+        text = util.getFileText(apiPath)
+        self.parameters = {}
+        self.boundary = '\n----boundary----\n'
+        index = 0
+        while True:
+            name, found = util.getStrBetween(text, left='name=', right='\n', start=index)
+            if found < 0:
+                break
+            index += len(name) + 1
+            jsonText, found = util.getStrBetween(text, left='json=', right=self.boundary, start=index)
+            if found < 0:
+                break
+            index += len(jsonText) + len(self.boundary)
+            jsonText = jsonText.strip()
+            self.parameters[name] = jsonText
+        self.parametersCombox.clear()
+        names = list(self.parameters.keys())
+        names.sort()
+        self.parametersCombox.addItems(names)
+        if self.parametersCombox.count() > curIndex and curIndex >= 0:
+            self.parametersCombox.setCurrentIndex(curIndex)
+
+
 class CodeDlg(QDialog):
     Signal = pyqtSignal(str)
 
@@ -772,6 +846,7 @@ class MainWindow(QMainWindow, astask.AsyncTask):
         self.initUI()
         self.selectSdkDlg = SelectSdkDlg(self, selectCallback=self.onSelectSdkCallback)
         self.tipDlg = TipDlg(None)
+        self.parametersDlg = ParametersDlg(self)
         self.codeDlg = CodeDlg(self)
         self.beautyOptionsDlg = BeautyOptionsDlg(self, enabledCallback=self.onBeautyOptionsEnabledOrDisabled)
         self.dataStreamDlg = DataStreamDlg(self, sendStreamCallback=self.onClickSendStreamMessageCallback)
@@ -1324,6 +1399,10 @@ class MainWindow(QMainWindow, astask.AsyncTask):
         tipBtn.setToolTip('show last error')
         tipBtn.clicked.connect(self.onClickLastError)
         hLayout.addWidget(tipBtn)
+        parametersBtn = QPushButton('Parameters')
+        parametersBtn.setToolTip('setParameters')
+        parametersBtn.clicked.connect(self.onClickSetParameters)
+        hLayout.addWidget(parametersBtn)
         codeBtn = QPushButton('RunCode')
         codeBtn.setToolTip('run python code')
         codeBtn.clicked.connect(self.onClickRunCode)
@@ -1750,6 +1829,12 @@ class MainWindow(QMainWindow, astask.AsyncTask):
 
     def onClickLastError(self) -> None:
         self.tipDlg.showTip()
+
+    def onClickSetParameters(self) -> None:
+        self.parametersDlg.show()
+        # need raise_ and activateWindow if dialog is already shown, otherwise codeDlg won't active
+        self.parametersDlg.raise_()
+        self.parametersDlg.activateWindow()
 
     def threadFuncDemo(self, signal: pyqtSignal, threadId: int, args: Any) -> None:
         count = args  # type: int

@@ -5,6 +5,13 @@ self.ret = self.rtcEngine.setClientRole(role=1)
 
 ----boundary----
 
+name=setParameters
+editable=0
+code=
+self.ret = self.rtcEngine.setParameters('{"key": value}')
+
+----boundary----
+
 name=updateChannelMediaOptionsEx
 editable=0
 code=
