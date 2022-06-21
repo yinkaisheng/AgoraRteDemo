@@ -10,7 +10,7 @@ name=rtc.video.playout_delay_min/max
 json=
 {
     "rtc.video.playout_delay_min": 0,
-    "rtc.video.playout_delay_max": 0
+    "rtc.video.playout_delay_max": 500
 }
 
 ----boundary----
