@@ -197,6 +197,11 @@ class ParametersDlg(QDialog):
         button.clicked.connect(self.onClickSetParameters)
         hLayout.addWidget(button)
 
+        button = QPushButton('reload')
+        button.setMinimumHeight(BUTTON_HEIGHT)
+        button.clicked.connect(self.onClickReload)
+        hLayout.addWidget(button)
+
         self.jsonEdit = QCodeEditor()
         self.jsonEdit.setStyleSheet('QPlainTextEdit{font-size:16px;font-family:Consolas;background-color:rgb(204,232,207);}')
         vLayout.addWidget(self.jsonEdit)
@@ -204,7 +209,7 @@ class ParametersDlg(QDialog):
         self.resultEdit = QLineEdit()
         vLayout.addWidget(self.resultEdit)
 
-        self.loadParametersList()
+        self.loadParameters()
 
     def onComboxParametersSelectionChanged(self, index: int) -> None:
         if index >= 0:
@@ -219,18 +224,21 @@ class ParametersDlg(QDialog):
                 ret = self.mainWindow.rtcEngine.setParameters(parametersText)
                 self.resultEdit.setText(f'result: {ret}')
 
-    def loadParametersList(self) -> None:
+    def onClickReload(self) -> None:
+        self.loadParameters()
+
+    def loadParameters(self) -> None:
         curIndex = self.parametersCombox.currentIndex()
         apiPath = os.path.join(agsdk.ExeDir, agsdk.ExeNameNoExt + '.parameters')
         text = util.getFileText(apiPath)
         self.parameters = {}
-        self.boundary = '\n----boundary----\n'
+        self.boundary = '\n----boundary----'
         index = 0
         while True:
             name, found = util.getStrBetween(text, left='name=', right='\n', start=index)
             if found < 0:
                 break
-            index += len(name) + 1
+            index = found + len(name) + 1
             jsonText, found = util.getStrBetween(text, left='json=', right=self.boundary, start=index)
             if found < 0:
                 break
@@ -343,6 +351,8 @@ class CodeDlg(QDialog):
 
     def onClickAppend(self) -> None:
         index = self.apiCombox.currentIndex()
+        if index < 0:
+            return
         if index < len(self.singleApis):
             code = self.singleApis[self.apiCombox.currentText()]
             self.codeEdit.appendPlainText(code)
@@ -390,7 +400,7 @@ class CodeDlg(QDialog):
         text = util.getFileText(apiPath)
         self.singleApis = {}
         self.multiApis = {}
-        self.boundary = '\n----boundary----\n'
+        self.boundary = '\n----boundary----'
         index = 0
         while True:
             name, found = util.getStrBetween(text, left='name=', right='\n', start=index)
@@ -421,9 +431,9 @@ class CodeDlg(QDialog):
 
     def saveApiList(self) -> None:
         apiPath = os.path.join(agsdk.ExeDir, agsdk.ExeNameNoExt + '.code')
-        text = '\n'.join(f'name={name}\neditable=0\ncode=\n{content}\n{self.boundary}\n' for name, content in self.singleApis.items())
+        text = '\n'.join(f'name={name}\neditable=0\ncode=\n\n{content}\n{self.boundary}\n' for name, content in self.singleApis.items())
         util.writeTextFile(text, apiPath)
-        text = '\n'.join(f'name={name}\neditable=1\ncode=\n{content}\n{self.boundary}\n' for name, content in self.multiApis.items())
+        text = '\n'.join(f'name={name}\neditable=1\ncode=\n\n{content}\n{self.boundary}\n' for name, content in self.multiApis.items())
         util.appendTextFile('\n', apiPath)
         util.appendTextFile(text, apiPath)
 

@@ -22,3 +22,11 @@ json=
 }
 
 ----boundary----
+
+name=engine.video.enable_hw_encoder
+json=
+{
+    "engine.video.enable_hw_encoder": true
+}
+
+----boundary----

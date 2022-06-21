@@ -1,6 +1,7 @@
 name=setClientRole
 editable=0
 code=
+
 self.ret = self.rtcEngine.setClientRole(role=1)
 
 ----boundary----
@@ -8,6 +9,7 @@ self.ret = self.rtcEngine.setClientRole(role=1)
 name=setParameters
 editable=0
 code=
+
 self.ret = self.rtcEngine.setParameters('{"key": value}')
 
 ----boundary----
@@ -214,12 +216,13 @@ self.ret = self.rtcEngine.startServerSuperResolution(token, r'snap.jpg', 2.0, 5)
 name=组合: 截图和局部超分
 editable=1
 code=
+
 def onSnapshotTaken(self, userData: str, callbackTimeSinceEpoch: int, funcName: str, jsStr: str, jsInfo: Dict) -> None:
     self.codeDlg.outputEdit.appendPlainText(f'{funcName}: {jsStr}\n')
     if jsInfo['errCode'] == 0 and jsInfo['filePath']:
         token = self.configJson['tokenUid']
         token = 'fakeToken'
-        self.rtcEngine.startServerSuperResolution(token, jsInfo['filePath'], 2.0, 5)
+        self.rtcEngine.startServerSuperResolution(token, imagePath=jsInfo['filePath'], scale=2.0, timeoutSeconds=5)
 MainWindow.onSnapshotTaken = onSnapshotTaken
 self.rtcEngineEventHandler['onSnapshotTaken'] = self.onSnapshotTaken
 
