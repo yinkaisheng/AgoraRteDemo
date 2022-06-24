@@ -42,6 +42,38 @@ self.codeDlg.outputEdit.appendPlainText(''.join(outputs))
 
 ----boundary----
 
+name=getScreenCaptureSources
+editable=0
+code=
+
+import struct
+from PIL import Image
+
+self.ret, sources = self.rtcEngine.getScreenCaptureSources(thumbSize=(300,200), iconSize=(40,40), includeScreen=False)
+if self.ret == 0:
+    sourcesPath = 'agora_screen_sources.data'
+    with open(sourcesPath, 'rb') as fin:
+        while 1:
+            indexData = fin.read(4)
+            if not indexData:
+                break
+            index = struct.unpack('=I', indexData)[0]
+            thumbLenData = fin.read(12)
+            thumbLen, width, height = struct.unpack('=III', thumbLenData)
+            if thumbLen > 0:
+                thumbData = fin.read(thumbLen)
+                image = Image.frombytes('RGBA', (width, height), thumbData, 'raw', 'BGRA')
+                image.save(f'ag_thumb{index:02}.bmp')
+            iconLenData = fin.read(12)
+            iconLen, width, height = struct.unpack('=III', iconLenData)
+            if iconLen > 0:
+                iconData = fin.read(iconLen)
+                image = Image.frombytes('RGBA', (width, height), iconData, 'raw', 'BGRA')
+                image.save(f'ag_icon{index:02}.bmp')
+    #os.remove(sourcesPath)
+
+----boundary----
+
 name=startDeviceTest
 editable=0
 code=

@@ -171,6 +171,55 @@ class TipDlg(QDialog):
         self.activateWindow()
 
 
+class StatsDlg(QDialog):
+    def __init__(self, parent: 'MainWindow' = None):
+        super(StatsDlg, self).__init__(parent)
+        self.mainWindow = parent
+        self.setWindowFlags(Qt.Dialog | Qt.WindowCloseButtonHint)
+        self.setWindowTitle(f"Stats")
+        # self.setAttribute(Qt.WA_DeleteOnClose)
+        self.resize(400, 700)
+        vLayout = QVBoxLayout()
+        self.setLayout(vLayout)
+
+        button = QPushButton('copy')
+        button.setMinimumHeight(BUTTON_HEIGHT)
+        button.clicked.connect(self.onClickCopy)
+        vLayout.addWidget(button)
+
+        hLayout = QHBoxLayout()
+        vLayout.addLayout(hLayout)
+
+        self.outputEdit = QPlainTextEdit()
+        self.outputEdit.setReadOnly(True)
+        self.outputEdit.setStyleSheet('QPlainTextEdit{font-size:14px;font-family:Consolas;background-color:rgb(204,232,207);}')
+        hLayout.addWidget(self.outputEdit)
+
+        self.timer = QTimer()
+        #self.timer.setSingleShot(True)
+        self.timer.timeout.connect(self.onTimer)
+        self.timer.start(1000)
+
+    def onClickCopy(self) -> None:
+        QApplication.clipboard().setText(self.outputEdit.toPlainText())
+
+    def onTimer(self) -> None:
+        if not self.mainWindow.rtcEngine:
+            return
+        statsStr = ['onLocalVideoStats\n' + self.mainWindow.localVideoStatsStr, 'onRemoteVideoStats']
+        for key, value in self.mainWindow.remoteVideoStatsStr.items():
+            statsStr.append(f'remote uid {key}\n{value}')
+        text = '\n\n'.join(statsStr)
+        vScrollBar = self.outputEdit.verticalScrollBar()
+        vValue = 0
+        if vScrollBar:
+            vValue = vScrollBar.value()
+        self.outputEdit.setPlainText(text)
+        vScrollBar = self.outputEdit.verticalScrollBar()
+        if vScrollBar and vValue > 0:
+            vScrollBar.setValue(vValue)
+
+
 class ParametersDlg(QDialog):
     def __init__(self, parent: QObject = None):
         super(ParametersDlg, self).__init__(parent)
@@ -851,11 +900,16 @@ class MainWindow(QMainWindow, astask.AsyncTask):
         self.painter = None
         self.pixmap = None
         self.pushVideoFrameFile = None
+        self.localVideoStatsStr = ''
+        self.localVideoStsts = {}
+        self.remoteVideoStatsStr = {}
+        self.remoteVideoStats = {}
 
         self.createUI()
         self.initUI()
         self.selectSdkDlg = SelectSdkDlg(self, selectCallback=self.onSelectSdkCallback)
         self.tipDlg = TipDlg(None)
+        self.statsDlg = StatsDlg(self)
         self.parametersDlg = ParametersDlg(self)
         self.codeDlg = CodeDlg(self)
         self.beautyOptionsDlg = BeautyOptionsDlg(self, enabledCallback=self.onBeautyOptionsEnabledOrDisabled)
@@ -967,6 +1021,11 @@ class MainWindow(QMainWindow, astask.AsyncTask):
         self.clientRoleCombox.setCurrentIndex(0)  # Broadcaster
         hLayout.addWidget(self.clientRoleCombox)
         hLayout.addStretch(1)
+
+        statsButton = QPushButton('VideoStats')
+        statsButton.setToolTip('on[Local|Remote]VideoStats')
+        statsButton.clicked.connect(self.onClickStats)
+        hLayout.addWidget(statsButton)
 
         # ----
         hLayout = QHBoxLayout()
@@ -1829,6 +1888,7 @@ class MainWindow(QMainWindow, astask.AsyncTask):
         # print('callback in thread:', threading.get_ident(), callbackTimeSinceEpoch, funcName, jsInfo)
 
     def onRtcEngineCallback(self, args: Tuple[str, int, str, str]) -> None:
+        '''all callbacks run in UI thread'''
         userData, callbackTimeSinceEpoch, funcName, jsStr = args
         #print(f'callbak to UI thread {threading.get_ident()}: userData {userData} epoch {callbackTimeSinceEpoch} \n{funcName} {jsStr}')
         jsInfo = json.loads(jsStr)
@@ -1839,6 +1899,12 @@ class MainWindow(QMainWindow, astask.AsyncTask):
 
     def onClickLastError(self) -> None:
         self.tipDlg.showTip()
+
+    def onClickStats(self) -> None:
+        self.statsDlg.show()
+        # need raise_ and activateWindow if dialog is already shown, otherwise codeDlg won't active
+        self.statsDlg.raise_()
+        self.statsDlg.activateWindow()
 
     def onClickSetParameters(self) -> None:
         self.parametersDlg.show()
@@ -1896,6 +1962,8 @@ class MainWindow(QMainWindow, astask.AsyncTask):
             'onLocalAudioStateChanged': self.dummyCallback,
             'onLocalVideoStateChanged': self.onLocalVideoStateChanged,
             'onRemoteVideoStateChanged': self.onRemoteVideoStateChanged,
+            'onLocalVideoStats': self.onLocalVideoStats,
+            'onRemoteVideoStats': self.onRemoteVideoStats,
             'onStreamMessage': self.onStreamMessage,
             'onStreamMessageError': self.onStreamMessageError,
             'onTrapezoidAutoCorrectionFinished': self.onTrapezoidAutoCorrectionFinished,
@@ -1978,6 +2046,7 @@ class MainWindow(QMainWindow, astask.AsyncTask):
         self.appId = appId
         context = agsdk.RtcEngineContext(appId)
         context.logConfig.logPath = os.path.join(agsdk.LogDir, 'AgoraSdk_log.log')
+        context.logConfig.logSizeInKB = self.configJson['logSizeInKB']
         context.channelProfile = agsdk.ChannelProfile.LiveBroadcasting
         ret = self.rtcEngine.initalize(context, self.onRtcEngineCallbackInThread)
         self.checkSDKResult(ret)
@@ -2594,6 +2663,8 @@ class MainWindow(QMainWindow, astask.AsyncTask):
             return
         uid = jsInfo['uid']
         suid = f'{uid}'
+        if uid in self.remoteVideoStatsStr:
+            del self.remoteVideoStatsStr[uid]
         for i in range(self.remoteUidCombox.count()):
             if suid == self.remoteUidCombox.itemText(i):
                 self.remoteUidCombox.removeItem(i)
@@ -2639,6 +2710,14 @@ class MainWindow(QMainWindow, astask.AsyncTask):
 
     def onRemoteVideoStateChanged(self, userData: str, callbackTimeSinceEpoch: int, funcName: str, jsStr: str, jsInfo: Dict) -> None:
         pass
+
+    def onLocalVideoStats(self, userData: str, callbackTimeSinceEpoch: int, funcName: str, jsStr: str, jsInfo: Dict) -> None:
+        self.localVideoStatsStr = jsStr
+        self.localVideoStsts = jsInfo
+
+    def onRemoteVideoStats(self, userData: str, callbackTimeSinceEpoch: int, funcName: str, jsStr: str, jsInfo: Dict) -> None:
+        self.remoteVideoStatsStr[jsInfo['uid']] = jsStr
+        self.remoteVideoStats[jsInfo['uid']] = jsInfo
 
     def onVideoSizeChanged(self, userData: str, callbackTimeSinceEpoch: int, funcName: str, jsStr: str, jsInfo: Dict) -> None:
         pass

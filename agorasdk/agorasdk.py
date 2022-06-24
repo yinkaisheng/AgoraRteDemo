@@ -592,7 +592,7 @@ class RtcEngine:
     def __init__(self):
         self.dll = _DllClient.instance().dll
         self.callback = None
-        self.printCallback = True
+        self.printCallback = False
         self.eventHandlerUserData = {}  # Dict[int, str]
         self.rtcEngine = self.dll.createRtcEngine()
         self.pRtcEngine = ctypes.c_void_p(self.rtcEngine)
@@ -662,6 +662,11 @@ class RtcEngine:
         ret = self.dll.initialize(self.pRtcEngine, ctypes.c_char_p(appId), context.areaCode, context.audioScenario,
                                   context.channelProfile, int(context.enableAudioDevice), self.pRtcEngienEventHandler,
                                   ctypes.c_char_p(logPath), context.logConfig.logSizeInKB, context.logConfig.logLevel)
+        return ret
+
+    @APITime
+    def setLogFileSize(self, fileSizeInKB: int) -> int:
+        ret = self.dll.setLogFileSize(self.pRtcEngine, fileSizeInKB)
         return ret
 
     @APITime
@@ -1079,6 +1084,21 @@ class RtcEngine:
             return -1
         ret = self.dll.setContentInspect(self.pRtcEngine, int(enable), int(cloudWork))
         return ret
+
+    @APITime
+    def getScreenCaptureSources(self, thumbSize: Tuple[int, int], iconSize: Tuple[int, int], includeScreen: bool) -> dict:
+        result = {'result': -1}
+        if SdkVersion < '3.7.200':
+            log.error(f'{SdkVersion} does not support this API')
+            return result
+        arrayType = ctypes.c_char * 10240
+        charArray = arrayType()
+
+        ret = self.dll.getScreenCaptureSources(self.pRtcEngine, thumbSize[0], thumbSize[1], iconSize[0], iconSize[1], int(includeScreen), charArray, len(charArray))
+        if ret == 0:
+            jsStr = charArray.value.decode('utf-8')
+            sources = json.loads(jsStr)
+        return ret, sources
 
     @APITime
     def startScreenCaptureByScreenRect(self, screenRect: Rectangle, regionRect: Rectangle, params: ScreenCaptureParameters) -> int:
