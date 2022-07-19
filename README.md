@@ -6,7 +6,7 @@ The portable app that compiled by nuitka.
 
 dll code [AgoraRtePythonDll](https://github.com/yinkaisheng/AgoraRtePythonDll)
 
-dll放置路径
+使用代码执行时dll放置路径
 ![bin](images/bin.jpg)
 
 Demo UI
@@ -21,5 +21,8 @@ SDK回调执行时可以自动调用对应的Python回调函数，并在回调�
 
 回调中执行任意Python代码
 ![callback](images/callback.jpg)
+
+配置文件AgoraRteDemo.config中可以配置调用各种场景对应的代码文件
+![scenario](images/scenario.jpg)
 
 
