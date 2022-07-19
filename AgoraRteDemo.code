@@ -199,15 +199,19 @@ name=takeSnapshot
 editable=0
 code=
 
+self.snapCount = 0
 def onSnapshotTaken(self, userData: str, callbackTimeSinceEpoch: int, funcName: str, jsStr: str, jsInfo: Dict) -> None:
     self.codeDlg.outputEdit.appendPlainText(f'{funcName}: {jsStr}\n')
     if jsInfo['errCode'] == 0 and jsInfo['filePath']:
+        self.snapCount += 1
         subprocess.Popen(jsInfo['filePath'], shell=True)
+        if self.snapCount < 2:
+            self.ret = self.rtcEngine.takeSnapshot(uid=0, filePath=r'snap2.jpg', rect=(0.0, 0.0, 0.75, 0.75))
 MainWindow.onSnapshotTaken = onSnapshotTaken
 self.rtcEngineEventHandler['onSnapshotTaken'] = self.onSnapshotTaken
 
 uid = 0
-self.ret = self.rtcEngine.takeSnapshot(uid, r'snap.jpg', rect=(0.0, 0.0, 0.75, 0.75))
+self.ret = self.rtcEngine.takeSnapshot(uid=uid, filePath=r'snap.jpg', rect=(0.0, 0.0, 0.75, 0.75))
 
 ----boundary----
 
