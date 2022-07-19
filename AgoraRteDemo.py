@@ -21,7 +21,7 @@ import agorasdk as agsdk
 if agsdk.ExePath.encode('utf-8') != agsdk.ExePath.encode('ansi'):
     # this error only occurs after compiling to exe by nuitka
     input('程序必须在纯英文路径下运行，不能有中文!\nThe application path must be English characters!\n' * 3)
-from transformAppId import transformAppId
+from decodeAppId import decodeAppId
 from PyQt5.QtCore import QObject, QThread, QTimer, Qt, pyqtSignal
 from PyQt5.QtGui import QCloseEvent, QColor, QContextMenuEvent, QCursor, QFont, QIcon, QIntValidator, QKeyEvent, QMouseEvent, QPainter, QPixmap, QTextCursor, QTextOption
 from PyQt5.QtWidgets import QAction, QApplication, QDesktopWidget, QDialog, QInputDialog, QMainWindow, QMenu, QMessageBox, QWidget, qApp
@@ -2042,7 +2042,7 @@ class MainWindow(QMainWindow, astask.AsyncTask):
         if appId == '00000000000000000000000000000000':
             QMessageBox.warning(None, 'Error', f'You need to set a valid AppId in the config file:\n{self.configPath}')
         elif appName.startswith('Agora'):
-            appId = transformAppId(appId)
+            appId = decodeAppId(appId)
         self.appId = appId
         context = agsdk.RtcEngineContext(appId)
         context.logConfig.logPath = os.path.join(agsdk.LogDir, 'AgoraSdk_log.log')
@@ -2908,7 +2908,7 @@ class MainWindow(QMainWindow, astask.AsyncTask):
             QMessageBox.warning(None, 'Error', f'You need to set a valid AppId in the config file:\n{self.configPath}')
             return
         elif appName.startswith('Agora'):
-            appId = transformAppId(appId)
+            appId = decodeAppId(appId)
         self.appId = appId
         context = agsdk.RtcEngineContext(appId)
         context.channelProfile = agsdk.ChannelProfile.LiveBroadcasting
