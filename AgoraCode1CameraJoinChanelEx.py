@@ -53,7 +53,7 @@ def joinChannelExTest(self) -> None:
     videoCanvas.mirrorMode = agsdk.VideoMirrorMode.Disabled
     videoCanvas.renderMode = agsdk.RenderMode.Fit
     videoCanvas.isScreenView = False
-    if agsdk.agorasdk.SdkVerson >= '3.8.200':
+    if agsdk.agorasdk.SdkVersion >= '3.8.200':
         videoCanvas.setupMode = agsdk.ViewSetupMode.Add
     self.rtcEngine.setupLocalVideo(videoCanvas)
     self.checkSDKResult(ret)
@@ -68,6 +68,7 @@ def joinChannelExTest(self) -> None:
     options.publishCameraTrack = True
     options.publishSecondaryCameraTrack = False
 
+    self.channelNameEdit.setText(channelName)
     self.uidExEdit.setText(str(uid))
     self.channelNameEx = channelName
     self.channelExOptions = options
