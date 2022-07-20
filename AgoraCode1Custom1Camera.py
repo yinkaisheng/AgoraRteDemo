@@ -20,7 +20,7 @@ def custom1Camera1Test(self) -> None:
         QMessageBox.warning(None, 'Error', f'You need to set a valid AppId in the config file:\n{self.configPath}')
         return
     elif appName.startswith('Agora'):
-        appId = transformAppId(appId)
+        appId = decodeAppId(appId)
     self.appId = appId
     context = agsdk.RtcEngineContext(appId)
     context.channelProfile = agsdk.ChannelProfile.LiveBroadcasting
@@ -144,6 +144,7 @@ def custom1Camera1Test(self) -> None:
     self.viewUsingIndex.add(viewIndex)
     self.viewIndex2EncoderMirrorMode[viewIndex] = videoCanvas.mirrorMode
 
+    exec(util.getFileText('AgoraCodePushFrameText.py'))
 
 MainWindow.custom1Camera1Test = custom1Camera1Test
 self.custom1Camera1Test()

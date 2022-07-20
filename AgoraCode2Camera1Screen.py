@@ -19,7 +19,7 @@ def camera2Screen1Test(self) -> None:
         QMessageBox.warning(None, 'Error', f'You need to set a valid AppId in the config file:\n{self.configPath}')
         return
     elif appName.startswith('Agora'):
-        appId = transformAppId(appId)
+        appId = decodeAppId(appId)
     self.appId = appId
     context = agsdk.RtcEngineContext(appId)
     context.channelProfile = agsdk.ChannelProfile.LiveBroadcasting
