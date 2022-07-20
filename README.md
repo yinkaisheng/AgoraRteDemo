@@ -14,7 +14,7 @@ Demo UI
 
 强大的SDK API调用测试工具，一个demo可以调用任意版本SDK。
 基于Python动态语言特性，demo可以实现任意顺序调用SDK API或API组合，编译API参数。
-SDK回调执行时可以自动调用对应的Python回调函数，并在回调中执行任意逻辑调用。
+SDK回调执行时可以自动调用对应的Python回调函数（目前只实现了部分回调），并在回调中执行任意逻辑调用。
 
 延迟调用
 ![delaycall](images/delaycall.jpg)
