@@ -38,6 +38,9 @@ def camera1Screen1Test(self) -> None:
     ret = self.rtcEngine.registerVideoFrameObserver()
     self.checkSDKResult(ret)
 
+    # self.rtcEngine.setParameters('{"rtc.video.playout_delay_min": 0}')
+    # self.rtcEngine.setParameters('{"rtc.video.playout_delay_max": 500}')
+
     ret = self.rtcEngine.enableVideo()
     self.checkSDKResult(ret)
     if ret != 0:

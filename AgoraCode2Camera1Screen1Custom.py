@@ -36,6 +36,9 @@ def camera2Screen1Custom1Test(self) -> None:
     if ret != 0:
         return
 
+    # self.rtcEngine.setParameters('{"rtc.video.playout_delay_min": 0}')
+    # self.rtcEngine.setParameters('{"rtc.video.playout_delay_max": 500}')
+
     ret = self.rtcEngine.registerVideoFrameObserver()
     self.checkSDKResult(ret)
 
