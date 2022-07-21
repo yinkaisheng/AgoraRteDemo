@@ -66,7 +66,7 @@ def joinChannelExTest(self) -> None:
 
     options = agsdk.ChannelMediaOptions()
     options.channelProfile = agsdk.ChannelProfile.LiveBroadcasting
-    options.clientRole = agsdk.ClientRole.Broadcaster
+    options.clientRoleType = agsdk.ClientRole.Broadcaster
     options.autoSubscribeAudio = True
     options.autoSubscribeVideo = True
     options.publishAudioTrack = True

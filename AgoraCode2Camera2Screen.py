@@ -90,7 +90,7 @@ def camera2Screen2Test(self) -> None:
 
     #options = agsdk.ChannelMediaOptions()
     #options.channelProfile = agsdk.ChannelProfile.LiveBroadcasting
-    #options.clientRole = agsdk.ClientRole.Broadcaster
+    #options.clientRoleType = agsdk.ClientRole.Broadcaster
     #options.autoSubscribeAudio = True
     #options.autoSubscribeVideo = True
     #options.publishAudioTrack = True
@@ -133,7 +133,7 @@ def camera2Screen2Test(self) -> None:
 
     options = agsdk.ChannelMediaOptions()
     options.channelProfile = agsdk.ChannelProfile.LiveBroadcasting
-    options.clientRole = agsdk.ClientRole.Broadcaster
+    options.clientRoleType = agsdk.ClientRole.Broadcaster
     options.autoSubscribeAudio = False
     options.autoSubscribeVideo = False
     options.publishAudioTrack = False
@@ -179,7 +179,7 @@ def camera2Screen2Test(self) -> None:
 
     options = agsdk.ChannelMediaOptions()
     options.channelProfile = agsdk.ChannelProfile.LiveBroadcasting
-    options.clientRole = agsdk.ClientRole.Broadcaster
+    options.clientRoleType = agsdk.ClientRole.Broadcaster
     options.autoSubscribeAudio = False
     options.autoSubscribeVideo = False
     options.publishAudioTrack = False
@@ -223,7 +223,7 @@ def camera2Screen2Test(self) -> None:
 
     options = agsdk.ChannelMediaOptions()
     options.channelProfile = agsdk.ChannelProfile.LiveBroadcasting
-    options.clientRole = agsdk.ClientRole.Broadcaster
+    options.clientRoleType = agsdk.ClientRole.Broadcaster
     options.autoSubscribeAudio = False
     options.autoSubscribeVideo = False
     options.publishAudioTrack = False

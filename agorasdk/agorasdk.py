@@ -352,7 +352,7 @@ class ChannelMediaOptions():
         self.enableAudioRecordingOrPlayout = None
         # int or enum value
         self.channelProfile = None
-        self.clientRole = None
+        self.clientRoleType = None
         self.publishMediaPlayerId = None
         self.audioDelayMs = None
         self.audienceLatencyLevel = None

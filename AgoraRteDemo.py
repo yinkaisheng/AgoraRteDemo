@@ -312,7 +312,7 @@ class CodeDlg(QDialog):
         self.setWindowFlags(Qt.Dialog | Qt.WindowMaximizeButtonHint | Qt.WindowCloseButtonHint)
         self.setWindowTitle(f"Python {sys.version.split()[0]} Code Executor ")
         # self.setAttribute(Qt.WA_DeleteOnClose)
-        self.resize(1400, 700)
+        self.resize(1200, 600)
         vLayout = QVBoxLayout()
         self.setLayout(vLayout)
 
@@ -2460,7 +2460,7 @@ class MainWindow(QMainWindow, astask.AsyncTask):
                 self.pushTimer.start(1000 // self.videoConfig.frameRate)
             options = agsdk.ChannelMediaOptions()
             options.channelProfile = agsdk.ChannelProfile.LiveBroadcasting
-            options.clientRole = agsdk.ClientRole.Broadcaster
+            options.clientRoleType = agsdk.ClientRole.Broadcaster
             options.autoSubscribeAudio = True
             options.autoSubscribeVideo = True
             options.publishAudioTrack = True
@@ -2529,7 +2529,7 @@ class MainWindow(QMainWindow, astask.AsyncTask):
         self.autoSubscribeVideoEx = int(self.channelName != self.channelNameEx)
         options = agsdk.ChannelMediaOptions()
         options.channelProfile = agsdk.ChannelProfile.LiveBroadcasting
-        options.clientRole = agsdk.ClientRole.Broadcaster
+        options.clientRoleType = agsdk.ClientRole.Broadcaster
         options.autoSubscribeAudio = self.autoSubscribeAudioEx
         options.autoSubscribeVideo = self.autoSubscribeVideoEx
         if self.curVideoSourceType == agsdk.VideoSourceType.CameraPrimary:
@@ -2901,196 +2901,7 @@ class MainWindow(QMainWindow, astask.AsyncTask):
         pass
 
     def testFunc(self) -> None:
-        channelName = 'ykstest2'
-        uid1 = 1000
-        uid2 = 1001
-        uid3 = 1003
-        token = ''
-        info = ''
-
-        if self.rtcEngine is None:
-            self.rtcEngine = agsdk.RtcEngine()
-        version, build = self.rtcEngine.getVersion()
-        self.setWindowTitle(f'{DemoTile} Version={version}, Build={build}, SdkDir={agsdk.agorasdk.SdkBinDir}')
-        appName = self.configJson['appNameList'][self.appNameComBox.currentIndex()]['appName']
-        appId = self.configJson['appNameList'][self.appNameComBox.currentIndex()]['appId']
-        if appId == '00000000000000000000000000000000':
-            QMessageBox.warning(None, 'Error', f'You need to set a valid AppId in the config file:\n{self.configPath}')
-            return
-        elif appName.startswith('Agora'):
-            appId = decodeAppId(appId)
-        self.appId = appId
-        context = agsdk.RtcEngineContext(appId)
-        context.channelProfile = agsdk.ChannelProfile.LiveBroadcasting
-        context.logConfig.logPath = os.path.join(agsdk.LogDir, 'AgoraSdk_log.log')
-        ret = self.rtcEngine.initalize(context, self.onRtcEngineCallbackInThread)
-        self.checkSDKResult(ret)
-        if ret != 0:
-            return
-        self.inited = True
-
-        ret = self.rtcEngine.setClientRole(agsdk.ClientRole.Broadcaster)
-        self.checkSDKResult(ret)
-        if ret != 0:
-            return
-
-        ret = self.rtcEngine.enableVideo()
-        self.checkSDKResult(ret)
-        if ret != 0:
-            return
-
-        devices = self.rtcEngine.enumerateVideoDevices()
-
-        if len(devices) < 2:
-            print('video devices count < 2')
-            return
-        # primary camera
-        uid = uid1
-        viewIndex = 0
-
-        sourceType = agsdk.VideoSourceType.CameraPrimary
-        videoCanvas = agsdk.VideoCanvas(uid=0, view=0)
-        videoCanvas.view = int(self.videoLabels[viewIndex].winId())
-        videoCanvas.sourceType = sourceType
-        videoCanvas.mirrorMode = agsdk.VideoMirrorMode.Disabled
-        videoCanvas.renderMode = agsdk.RenderMode.Fit
-        videoCanvas.isScreenView = False
-        if agsdk.agorasdk.SdkVersion >= '3.8.200':
-            videoCanvas.setupMode = agsdk.ViewSetupMode.Add
-        self.rtcEngine.setupLocalVideo(videoCanvas)
-        self.checkSDKResult(ret)
-
-        # for deviceName, deviceId in devices:
-            # pass
-        deviceId = devices[0][1]
-        cameraConfig = agsdk.CameraCapturerConfiguration()
-        cameraConfig.deviceId = deviceId
-        cameraConfig.width = 640
-        cameraConfig.height = 360
-        cameraConfig.frameRate = 15
-        ret = self.rtcEngine.startPrimaryCameraCapture(cameraConfig)
-        self.checkSDKResult(ret)
-
-        self.rtcEngine.startPreview(sourceType)
-        self.checkSDKResult(ret)
-
-        self.channelName = channelName
-        uid = uid1
-
-        ret = self.rtcEngine.joinChannel(channelName, uid, token, info)
-
-        #options = agsdk.ChannelMediaOptions()
-        #options.channelProfile = agsdk.ChannelProfile.LiveBroadcasting
-        #options.clientRole = agsdk.ClientRole.Broadcaster
-        #options.autoSubscribeAudio = True
-        #options.autoSubscribeVideo = True
-        #options.publishAudioTrack = True
-        #options.publishCameraTrack = True
-        #self.channelOptions = options
-        #ret = self.rtcEngine.joinChannelWithOptions(channelName, uid, token, options)
-
-        self.joined = True
-        self.localUids.append(uid)
-        self.viewUsingIndex.add(viewIndex)
-        if 0 not in self.viewIndex2EncoderMirrorMode:
-            self.viewIndex2EncoderMirrorMode[viewIndex] = videoCanvas.mirrorMode
-
-        # second camera
-        uid = uid2
-        token = ''
-        viewIndex += 1
-
-        sourceType = agsdk.VideoSourceType.CameraSecondary
-        videoCanvas = agsdk.VideoCanvas(uid=0, view=0)
-        videoCanvas.view = int(self.videoLabels[viewIndex].winId())
-        videoCanvas.sourceType = sourceType
-        videoCanvas.mirrorMode = agsdk.VideoMirrorMode.Disabled
-        videoCanvas.renderMode = agsdk.RenderMode.Fit
-        videoCanvas.isScreenView = False
-        if agsdk.agorasdk.SdkVersion >= '3.8.200':
-            videoCanvas.setupMode = agsdk.ViewSetupMode.Add
-        self.rtcEngine.setupLocalVideo(videoCanvas)
-        self.checkSDKResult(ret)
-
-        # for deviceName, deviceId in devices:
-            # pass
-        deviceId = devices[1][1]
-        cameraConfig = agsdk.CameraCapturerConfiguration()
-        cameraConfig.deviceId = deviceId
-        cameraConfig.width = 640
-        cameraConfig.height = 360
-        cameraConfig.frameRate = 15
-        ret = self.rtcEngine.startSecondaryCameraCapture(cameraConfig)
-        self.checkSDKResult(ret)
-
-        self.rtcEngine.startPreview(sourceType)
-        self.checkSDKResult(ret)
-
-        options = agsdk.ChannelMediaOptions()
-        options.channelProfile = agsdk.ChannelProfile.LiveBroadcasting
-        options.clientRole = agsdk.ClientRole.Broadcaster
-        options.autoSubscribeAudio = False
-        options.autoSubscribeVideo = False
-        options.publishAudioTrack = False
-        options.publishCameraTrack = False
-        options.publishSecondaryCameraTrack = True
-
-        self.channelNameEx = channelName
-        self.channelExOptions = options
-        self.rtcConnection = agsdk.RtcConnection(channelName, uid)
-        ret = self.rtcEngine.joinChannelEx(self.rtcConnection, token, options)
-        self.checkSDKResult(ret)
-
-        self.localUids.append(uid)
-        self.viewUsingIndex.add(viewIndex)
-        if 0 not in self.viewIndex2EncoderMirrorMode:
-            self.viewIndex2EncoderMirrorMode[viewIndex] = videoCanvas.mirrorMode
-
-        # first screen share
-        uid = uid3
-        token = ''
-        viewIndex += 1
-        screenRect = agsdk.Rectangle(0, 0, 1920, 1080)
-        regionRect = agsdk.Rectangle(0, 0, 0, 0)
-        excludeWindows = []
-        captureParams = agsdk.ScreenCaptureParameters(screenRect.width, screenRect.height, fps=15, bitrate=0, excludeWindowList=excludeWindows)
-        ret = self.rtcEngine.startPrimaryScreenCapture(screenRect, regionRect, captureParams)
-        self.checkSDKResult(ret)
-
-        sourceType = agsdk.VideoSourceType.Screen
-        videoCanvas = agsdk.VideoCanvas(uid=0, view=0)
-        videoCanvas.view = int(self.videoLabels[viewIndex].winId())
-        videoCanvas.sourceType = sourceType
-        videoCanvas.mirrorMode = agsdk.VideoMirrorMode.Disabled
-        videoCanvas.renderMode = agsdk.RenderMode.Fit
-        videoCanvas.isScreenView = False
-        videoCanvas.isScreenView = False
-        if agsdk.agorasdk.SdkVersion >= '3.8.200':
-            videoCanvas.setupMode = agsdk.ViewSetupMode.Add
-        self.rtcEngine.setupLocalVideo(videoCanvas)
-        self.checkSDKResult(ret)
-
-        self.rtcEngine.startPreview(sourceType)
-        self.checkSDKResult(ret)
-
-        #self.channelNameEx = channelName
-
-        options = agsdk.ChannelMediaOptions()
-        options.channelProfile = agsdk.ChannelProfile.LiveBroadcasting
-        options.clientRole = agsdk.ClientRole.Broadcaster
-        options.autoSubscribeAudio = False
-        options.autoSubscribeVideo = False
-        options.publishAudioTrack = False
-        options.publishCameraTrack = False
-        options.publishScreenTrack = True
-
-        self.channelExOptions = options
-        self.rtcConnection = agsdk.RtcConnection(channelName, uid)
-        ret = self.rtcEngine.joinChannelEx(self.rtcConnection, token, options)
-        self.checkSDKResult(ret)
-
-        self.localUids.append(uid)
-        self.viewUsingIndex.add(viewIndex)
+        pass
 
 
 # def IsUserAnAdmin() -> bool:

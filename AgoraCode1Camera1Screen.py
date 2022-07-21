@@ -78,25 +78,33 @@ def camera1Screen1Test(self) -> None:
     self.rtcEngine.startPreview(sourceType)
     self.checkSDKResult(ret)
 
+    videoConfig = agsdk.VideoEncoderConfiguration(width=640, height=360, frameRate=15, bitrate=0, codecType=VideoCodec.H264,
+                                                  degradationPreference=DegradationPreference.MaintainQuality,
+                                                  minBitrate=-1, mirrorMode=VideoMirrorMode.Disabled,
+                                                  orientationMode=OrientationMode.Adaptive)
+    ret = self.rtcEngine.setVideoEncoderConfiguration(videoConfig)
+
     self.channelName = channelName
     self.channelNameEdit.setText(channelName)
     self.uidEdit.setText(str(uid))
 
     ret = self.rtcEngine.joinChannel(channelName, uid, token, info)
-
-    for remoteUid in self.localUids:
-        ret = self.rtcEngine.muteRemoteAudioStream(remoteUid, True)
-        ret = self.rtcEngine.muteRemoteVideoStream(remoteUid, True)
+    self.checkSDKResult(ret)
 
     #options = agsdk.ChannelMediaOptions()
     #options.channelProfile = agsdk.ChannelProfile.LiveBroadcasting
-    #options.clientRole = agsdk.ClientRole.Broadcaster
+    #options.clientRoleType = agsdk.ClientRole.Broadcaster
     #options.autoSubscribeAudio = True
     #options.autoSubscribeVideo = True
     #options.publishAudioTrack = True
     #options.publishCameraTrack = True
     #self.channelOptions = options
     #ret = self.rtcEngine.joinChannelWithOptions(channelName, uid, token, options)
+
+    for remoteUid in self.localUids:
+        ret = self.rtcEngine.muteRemoteAudioStream(remoteUid, True)
+        ret = self.rtcEngine.muteRemoteVideoStream(remoteUid, True)
+
 
     self.joined = True
     self.viewUsingIndex.add(viewIndex)
@@ -131,7 +139,7 @@ def camera1Screen1Test(self) -> None:
 
     options = agsdk.ChannelMediaOptions()
     options.channelProfile = agsdk.ChannelProfile.LiveBroadcasting
-    options.clientRole = agsdk.ClientRole.Broadcaster
+    options.clientRoleType = agsdk.ClientRole.Broadcaster
     options.autoSubscribeAudio = False
     options.autoSubscribeVideo = False
     options.publishAudioTrack = False
@@ -159,6 +167,13 @@ def camera1Screen1Test(self) -> None:
     self.checkSDKResult(ret)
 
     self.viewUsingIndex.add(viewIndex)
+
+    #videoConfig = agsdk.VideoEncoderConfiguration(width=640, height=360, frameRate=15, bitrate=0, codecType=VideoCodec.H264,
+                                                  #degradationPreference=DegradationPreference.MaintainQuality,
+                                                  #minBitrate=-1, mirrorMode=VideoMirrorMode.Disabled,
+                                                  #orientationMode=OrientationMode.Adaptive)
+    #ret = self.rtcEngine.setVideoEncoderConfiguration(videoConfig)
+    #self.checkSDKResult(ret)
 
 MainWindow.camera1Screen1Test = camera1Screen1Test
 self.camera1Screen1Test()
