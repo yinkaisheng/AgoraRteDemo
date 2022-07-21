@@ -65,6 +65,8 @@ def camera2Screen1Custom1Test(self) -> None:
     self.pushUid = uid
 
     options = agsdk.ChannelMediaOptions()
+    options.channelProfile = agsdk.ChannelProfile.LiveBroadcasting
+    options.clientRole = agsdk.ClientRole.Broadcaster
     options.autoSubscribeAudio = False
     options.autoSubscribeVideo = False
     options.publishAudioTrack = False
@@ -125,6 +127,8 @@ def camera2Screen1Custom1Test(self) -> None:
     self.checkSDKResult(ret)
 
     options = agsdk.ChannelMediaOptions()
+    options.channelProfile = agsdk.ChannelProfile.LiveBroadcasting
+    options.clientRole = agsdk.ClientRole.Broadcaster
     options.autoSubscribeAudio = False
     options.autoSubscribeVideo = False
     options.publishAudioTrack = False
@@ -171,6 +175,8 @@ def camera2Screen1Custom1Test(self) -> None:
     self.checkSDKResult(ret)
 
     options = agsdk.ChannelMediaOptions()
+    options.channelProfile = agsdk.ChannelProfile.LiveBroadcasting
+    options.clientRole = agsdk.ClientRole.Broadcaster
     options.autoSubscribeAudio = False
     options.autoSubscribeVideo = False
     options.publishAudioTrack = False
@@ -215,6 +221,8 @@ def camera2Screen1Custom1Test(self) -> None:
     #self.channelNameEx = channelName
 
     options = agsdk.ChannelMediaOptions()
+    options.channelProfile = agsdk.ChannelProfile.LiveBroadcasting
+    options.clientRole = agsdk.ClientRole.Broadcaster
     options.autoSubscribeAudio = False
     options.autoSubscribeVideo = False
     options.publishAudioTrack = False

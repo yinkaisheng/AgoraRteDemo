@@ -62,6 +62,8 @@ def joinChannelExTest(self) -> None:
     self.checkSDKResult(ret)
 
     options = agsdk.ChannelMediaOptions()
+    options.channelProfile = agsdk.ChannelProfile.LiveBroadcasting
+    options.clientRole = agsdk.ClientRole.Broadcaster
     options.autoSubscribeAudio = True
     options.autoSubscribeVideo = True
     options.publishAudioTrack = True

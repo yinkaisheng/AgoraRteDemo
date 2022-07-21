@@ -86,6 +86,8 @@ def camera1Screen1Test(self) -> None:
         ret = self.rtcEngine.muteRemoteVideoStream(remoteUid, True)
 
     #options = agsdk.ChannelMediaOptions()
+    #options.channelProfile = agsdk.ChannelProfile.LiveBroadcasting
+    #options.clientRole = agsdk.ClientRole.Broadcaster
     #options.autoSubscribeAudio = True
     #options.autoSubscribeVideo = True
     #options.publishAudioTrack = True
@@ -125,11 +127,27 @@ def camera1Screen1Test(self) -> None:
     #self.channelNameEx = channelName
 
     options = agsdk.ChannelMediaOptions()
+    options.channelProfile = agsdk.ChannelProfile.LiveBroadcasting
+    options.clientRole = agsdk.ClientRole.Broadcaster
     options.autoSubscribeAudio = False
     options.autoSubscribeVideo = False
     options.publishAudioTrack = False
     options.publishCameraTrack = False
     options.publishScreenTrack = True
+    # options.publishSecondaryCameraTrack = None
+    # options.publishSecondaryScreenTrack = None
+    # options.publishCustomAudioTrack = None
+    # options.publishCustomVideoTrack = None
+    # options.publishCustomAudioTrackEnableAec = None
+    # options.publishEncodedVideoTrack = None
+    # options.publishMediaPlayerAudioTrack = None
+    # options.publishMediaPlayerVideoTrack = None
+    # options.publishTrancodedVideoTrack = None
+    # options.enableAudioRecordingOrPlayout = None
+    # options.publishMediaPlayerId = None
+    # options.audioDelayMs = None
+    # options.audienceLatencyLevel = None
+    # options.defaultVideoStreamType = None
 
     self.uidExEdit.setText(str(uid))
     self.channelExOptions = options

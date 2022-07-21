@@ -2458,7 +2458,13 @@ class MainWindow(QMainWindow, astask.AsyncTask):
                 self.pushTimer.start(1000 // self.pushVideoFrameFile.fps)
             else:
                 self.pushTimer.start(1000 // self.videoConfig.frameRate)
-            options = agsdk.ChannelMediaOptions(autoSubscribeAudio=True, autoSubscribeVideo=True, publishAudioTrack=True, publishCustomVideoTrack=True)
+            options = agsdk.ChannelMediaOptions()
+            options.channelProfile = agsdk.ChannelProfile.LiveBroadcasting
+            options.clientRole = agsdk.ClientRole.Broadcaster
+            options.autoSubscribeAudio = True
+            options.autoSubscribeVideo = True
+            options.publishAudioTrack = True
+            options.publishCustomVideoTrack = True
             self.channelOptions = options
             ret = self.rtcEngine.joinChannelWithOptions(self.channelName, uid, token, options)
         else:
@@ -2521,7 +2527,11 @@ class MainWindow(QMainWindow, astask.AsyncTask):
         token = self.tokenEdit.text().strip()
         #info = self.infoEdit.text().strip()
         self.autoSubscribeVideoEx = int(self.channelName != self.channelNameEx)
-        options = agsdk.ChannelMediaOptions(autoSubscribeAudio=self.autoSubscribeAudioEx, autoSubscribeVideo=self.autoSubscribeVideoEx)
+        options = agsdk.ChannelMediaOptions()
+        options.channelProfile = agsdk.ChannelProfile.LiveBroadcasting
+        options.clientRole = agsdk.ClientRole.Broadcaster
+        options.autoSubscribeAudio = self.autoSubscribeAudioEx
+        options.autoSubscribeVideo = self.autoSubscribeVideoEx
         if self.curVideoSourceType == agsdk.VideoSourceType.CameraPrimary:
             options.publishCameraTrack = True
         elif self.curVideoSourceType == agsdk.VideoSourceType.CameraSecondary:
@@ -2970,6 +2980,8 @@ class MainWindow(QMainWindow, astask.AsyncTask):
         ret = self.rtcEngine.joinChannel(channelName, uid, token, info)
 
         #options = agsdk.ChannelMediaOptions()
+        #options.channelProfile = agsdk.ChannelProfile.LiveBroadcasting
+        #options.clientRole = agsdk.ClientRole.Broadcaster
         #options.autoSubscribeAudio = True
         #options.autoSubscribeVideo = True
         #options.publishAudioTrack = True
@@ -3015,6 +3027,8 @@ class MainWindow(QMainWindow, astask.AsyncTask):
         self.checkSDKResult(ret)
 
         options = agsdk.ChannelMediaOptions()
+        options.channelProfile = agsdk.ChannelProfile.LiveBroadcasting
+        options.clientRole = agsdk.ClientRole.Broadcaster
         options.autoSubscribeAudio = False
         options.autoSubscribeVideo = False
         options.publishAudioTrack = False
@@ -3062,6 +3076,8 @@ class MainWindow(QMainWindow, astask.AsyncTask):
         #self.channelNameEx = channelName
 
         options = agsdk.ChannelMediaOptions()
+        options.channelProfile = agsdk.ChannelProfile.LiveBroadcasting
+        options.clientRole = agsdk.ClientRole.Broadcaster
         options.autoSubscribeAudio = False
         options.autoSubscribeVideo = False
         options.publishAudioTrack = False

@@ -333,34 +333,26 @@ class RtcConnection():
 
 
 class ChannelMediaOptions():
-    def __init__(self, channelProfile: ChannelProfile = ChannelProfile.LiveBroadcasting,
-                 clientRole: ClientRole = ClientRole.Broadcaster,
-                 autoSubscribeAudio: bool = None,
-                 autoSubscribeVideo: bool = None,
-                 publishAudioTrack: bool = None,
-                 publishCameraTrack: bool = None,
-                 publishSecondaryCameraTrack: bool = None,
-                 publishScreenTrack: bool = None,
-                 publishSecondaryScreenTrack: bool = None,
-                 publishCustomAudioTrack: bool = None,
-                 publishCustomVideoTrack: bool = None):
-        self.channelProfile = channelProfile
-        self.clientRole = clientRole
-        self.autoSubscribeAudio = autoSubscribeAudio
-        self.autoSubscribeVideo = autoSubscribeVideo
-        self.publishAudioTrack = publishAudioTrack  # publishMicrophoneTrack in arsenal
-        self.publishCameraTrack = publishCameraTrack
-        self.publishSecondaryCameraTrack = publishSecondaryCameraTrack
-        self.publishScreenTrack = publishScreenTrack
-        self.publishSecondaryScreenTrack = publishSecondaryScreenTrack
-        self.publishCustomAudioTrack = publishCustomAudioTrack
-        self.publishCustomVideoTrack = publishCustomVideoTrack
+    def __init__(self):
+        # bool value
+        self.autoSubscribeAudio = None
+        self.autoSubscribeVideo = None
+        self.publishAudioTrack = None  # publishMicrophoneTrack in arsenal
+        self.publishCameraTrack = None
+        self.publishSecondaryCameraTrack = None
+        self.publishScreenTrack = None
+        self.publishSecondaryScreenTrack = None
+        self.publishCustomAudioTrack = None
+        self.publishCustomVideoTrack = None
         self.publishCustomAudioTrackEnableAec = None
         self.publishEncodedVideoTrack = None
         self.publishMediaPlayerAudioTrack = None
         self.publishMediaPlayerVideoTrack = None
         self.publishTrancodedVideoTrack = None
         self.enableAudioRecordingOrPlayout = None
+        # int or enum value
+        self.channelProfile = None
+        self.clientRole = None
         self.publishMediaPlayerId = None
         self.audioDelayMs = None
         self.audienceLatencyLevel = None

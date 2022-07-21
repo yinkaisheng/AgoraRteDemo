@@ -86,6 +86,8 @@ def camera2Screen2Test(self) -> None:
         ret = self.rtcEngine.muteRemoteVideoStream(remoteUid, True)
 
     #options = agsdk.ChannelMediaOptions()
+    #options.channelProfile = agsdk.ChannelProfile.LiveBroadcasting
+    #options.clientRole = agsdk.ClientRole.Broadcaster
     #options.autoSubscribeAudio = True
     #options.autoSubscribeVideo = True
     #options.publishAudioTrack = True
@@ -127,6 +129,8 @@ def camera2Screen2Test(self) -> None:
     self.checkSDKResult(ret)
 
     options = agsdk.ChannelMediaOptions()
+    options.channelProfile = agsdk.ChannelProfile.LiveBroadcasting
+    options.clientRole = agsdk.ClientRole.Broadcaster
     options.autoSubscribeAudio = False
     options.autoSubscribeVideo = False
     options.publishAudioTrack = False
@@ -171,6 +175,8 @@ def camera2Screen2Test(self) -> None:
     #self.channelNameEx = channelName
 
     options = agsdk.ChannelMediaOptions()
+    options.channelProfile = agsdk.ChannelProfile.LiveBroadcasting
+    options.clientRole = agsdk.ClientRole.Broadcaster
     options.autoSubscribeAudio = False
     options.autoSubscribeVideo = False
     options.publishAudioTrack = False
@@ -213,6 +219,8 @@ def camera2Screen2Test(self) -> None:
     #self.channelNameEx = channelName
 
     options = agsdk.ChannelMediaOptions()
+    options.channelProfile = agsdk.ChannelProfile.LiveBroadcasting
+    options.clientRole = agsdk.ClientRole.Broadcaster
     options.autoSubscribeAudio = False
     options.autoSubscribeVideo = False
     options.publishAudioTrack = False
