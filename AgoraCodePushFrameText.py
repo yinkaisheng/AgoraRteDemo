@@ -11,4 +11,4 @@ def funnyPushText(self):
         self.pushTextCount = 0
 MainWindow.funnyPushText = funnyPushText
 if self.joined:
-    self.delayCall(timeMs=2000, func=self.funnyPushText)
+    self.delayCall(timeMs=1000, func=self.funnyPushText)

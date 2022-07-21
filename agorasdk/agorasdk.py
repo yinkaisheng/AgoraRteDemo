@@ -348,26 +348,33 @@ class ChannelMediaOptions():
         self.clientRole = clientRole
         self.autoSubscribeAudio = autoSubscribeAudio
         self.autoSubscribeVideo = autoSubscribeVideo
-        self.publishAudioTrack = publishAudioTrack
+        self.publishAudioTrack = publishAudioTrack  # publishMicrophoneTrack in arsenal
         self.publishCameraTrack = publishCameraTrack
         self.publishSecondaryCameraTrack = publishSecondaryCameraTrack
         self.publishScreenTrack = publishScreenTrack
         self.publishSecondaryScreenTrack = publishSecondaryScreenTrack
         self.publishCustomAudioTrack = publishCustomAudioTrack
         self.publishCustomVideoTrack = publishCustomVideoTrack
+        self.publishCustomAudioTrackEnableAec = None
+        self.publishEncodedVideoTrack = None
+        self.publishMediaPlayerAudioTrack = None
+        self.publishMediaPlayerVideoTrack = None
+        self.publishTrancodedVideoTrack = None
+        self.enableAudioRecordingOrPlayout = None
+        self.publishMediaPlayerId = None
+        self.audioDelayMs = None
+        self.audienceLatencyLevel = None
+        self.defaultVideoStreamType = None
 
-    def convertNone(self):
+    def toJsonStr(self) -> str:
+        opt = {}
         for key in self.__dict__:
-            if not key.startswith('__') and self.__dict__[key] is None:
-                self.__dict__[key] = -1  # to c++ dll, -1 indicates c++ options is null
+            if not key.startswith('__') and self.__dict__[key] is not None:
+                opt[key] = self.__dict__[key]
+        return json.dumps(opt)
 
     def __str__(self) -> str:
-        return f'{self.__class__.__name__}(channelProfile={self.channelProfile}, clientRole={self.clientRole}, '    \
-            f'autoSubscribeAudio={self.autoSubscribeAudio}, autoSubscribeVideo={self.autoSubscribeVideo}, ' \
-            f'publishAudioTrack={self.publishAudioTrack}, '   \
-            f'publishCameraTrack={self.publishCameraTrack}, publishSecondaryCameraTrack={self.publishSecondaryCameraTrack}, '   \
-            f'publishScreenTrack={self.publishScreenTrack}, publishSecondaryScreenTrack={self.publishSecondaryScreenTrack}, '   \
-            f'publishCustomAudioTrack={self.publishCustomAudioTrack}, publishCustomVideoTrack={self.publishCustomVideoTrack})'
+        return f'{self.__class__.__name__}{self.toJsonStr()}'
 
     __repr__ = __str__
 
@@ -551,11 +558,10 @@ class _DllClient:
 
     def __init__(self):
         os.environ["PATH"] = SdkBinDirFull + os.pathsep + os.environ["PATH"]
-        if isPy38OrHigher() and os.path.exists(SdkBinDirFull):
-            os.add_dll_directory(SdkBinDirFull)
         load = False
         try:
-            self.dll = ctypes.cdll.AgoraPython
+            dllPath = os.path.join(SdkBinDirFull, 'AgoraPython.dll')
+            self.dll = ctypes.cdll.LoadLibrary(dllPath)
             load = True
         except Exception as ex:
             log.error(ex)
@@ -1069,12 +1075,13 @@ class RtcEngine:
             return -1
 
     @APITime
-    def startServerSuperResolution(self, token: str, imagePath: str, scale: float, timeoutSeconds: int) -> int:
+    def startServerSuperResolution(self, token: str, srcImagePath: str, dstImagePath: str, scale: float, timeoutSeconds: int) -> int:
         if not SdkVersion.startswith('3.6.200.10'):
             log.error(f'{SdkVersion} does not support this API')
         token = token.encode('utf-8')
-        imagePath = imagePath.encode('utf-8')
-        ret = self.dll.startServerSuperResolution(self.pRtcEngine, ctypes.c_char_p(token), ctypes.c_char_p(imagePath), ctypes.c_float(scale), timeoutSeconds)
+        srcImagePath = srcImagePath.encode('utf-8')
+        dstImagePath = dstImagePath.encode('utf-8')
+        ret = self.dll.startServerSuperResolution(self.pRtcEngine, ctypes.c_char_p(token), ctypes.c_char_p(srcImagePath), ctypes.c_char_p(dstImagePath), ctypes.c_float(scale), timeoutSeconds)
         return ret
 
     @APITime
@@ -1187,38 +1194,15 @@ class RtcEngine:
     def joinChannelWithOptions(self, channelName: str, uid: int = 0, token: str = '', options: ChannelMediaOptions = ChannelMediaOptions()) -> int:
         channelName = channelName.encode('utf-8')
         token = token.encode('utf-8')
-        options.convertNone()
-        ret = self.dll.joinChannelWithOptions(self.pRtcEngine,
-                                              ctypes.c_char_p(channelName),
-                                              uid, ctypes.c_char_p(token),
-                                              options.channelProfile,
-                                              options.clientRole,
-                                              options.autoSubscribeAudio,
-                                              options.autoSubscribeVideo,
-                                              options.publishAudioTrack,
-                                              options.publishCameraTrack,
-                                              options.publishSecondaryCameraTrack,
-                                              options.publishScreenTrack,
-                                              options.publishSecondaryScreenTrack,
-                                              options.publishCustomAudioTrack,
-                                              options.publishCustomVideoTrack)
+        optionsJson = options.toJsonStr().encode('utf-8')
+        ret = self.dll.joinChannelWithOptions(self.pRtcEngine, ctypes.c_char_p(channelName), uid,
+                                              ctypes.c_char_p(token), ctypes.c_char_p(optionsJson))
         return ret
 
     @APITime
     def updateChannelMediaOptions(self, options: ChannelMediaOptions) -> int:
-        options.convertNone()
-        ret = self.dll.updateChannelMediaOptions(self.pRtcEngine,
-                                                 options.channelProfile,
-                                                 options.clientRole,
-                                                 options.autoSubscribeAudio,
-                                                 options.autoSubscribeVideo,
-                                                 options.publishAudioTrack,
-                                                 options.publishCameraTrack,
-                                                 options.publishSecondaryCameraTrack,
-                                                 options.publishScreenTrack,
-                                                 options.publishSecondaryScreenTrack,
-                                                 options.publishCustomAudioTrack,
-                                                 options.publishCustomVideoTrack)
+        optionsJson = options.toJsonStr().encode('utf-8')
+        ret = self.dll.updateChannelMediaOptions(self.pRtcEngine, ctypes.c_char_p(optionsJson))
         return ret
 
     @APITime
@@ -1230,22 +1214,26 @@ class RtcEngine:
             ret = self.dll.joinChannelWithUserAccount(self.pRtcEngine, ctypes.c_char_p(channelName),
                                                       ctypes.c_char_p(userAccount), ctypes.c_char_p(token))
         else:
-            options.convertNone()
+            optionsJson = options.toJsonStr().encode('utf-8')
             ret = self.dll.joinChannelWithUserAccount2(self.pRtcEngine,
                                                        ctypes.c_char_p(channelName),
                                                        ctypes.c_char_p(userAccount),
                                                        ctypes.c_char_p(token),
-                                                       options.channelProfile,
-                                                       options.clientRole,
-                                                       options.autoSubscribeAudio,
-                                                       options.autoSubscribeVideo,
-                                                       options.publishAudioTrack,
-                                                       options.publishCameraTrack,
-                                                       options.publishSecondaryCameraTrack,
-                                                       options.publishScreenTrack,
-                                                       options.publishSecondaryScreenTrack,
-                                                       options.publishCustomAudioTrack,
-                                                       options.publishCustomVideoTrack)
+                                                       ctypes.c_char_p(optionsJson))
+        return ret
+
+    @APITime
+    def joinChannelWithUserAccountEx(self, channelName: str, userAccount: str, token: str = '', options: ChannelMediaOptions = None) -> int:
+        channelName = channelName.encode('utf-8')
+        userAccount = userAccount.encode('utf-8')
+        token = token.encode('utf-8')
+        optionsJson = options.toJsonStr().encode('utf-8')
+        ret = self.dll.joinChannelWithUserAccountEx(self.pRtcEngine,
+                                                    ctypes.c_char_p(channelName),
+                                                    ctypes.c_char_p(userAccount),
+                                                    ctypes.c_char_p(token),
+                                                    ctypes.c_char_p(optionsJson),
+                                                    self.pRtcEngienEventHandlerEx)
         return ret
 
     @APITime
@@ -1257,43 +1245,23 @@ class RtcEngine:
     def joinChannelEx(self, connection: RtcConnection, token: str = '', options: ChannelMediaOptions = ChannelMediaOptions()) -> int:
         channelName = connection.channelId.encode('utf-8') if connection.channelId != None else 0
         token = token.encode('utf-8')
-        options.convertNone()
+        optionsJson = options.toJsonStr().encode('utf-8')
         ret = self.dll.joinChannelEx(self.pRtcEngine,
                                      ctypes.c_char_p(channelName),
                                      connection.localUid,
                                      ctypes.c_char_p(token),
-                                     self.pRtcEngienEventHandlerEx,
-                                     options.channelProfile,
-                                     options.clientRole,
-                                     options.autoSubscribeAudio,
-                                     options.autoSubscribeVideo,
-                                     options.publishAudioTrack,
-                                     options.publishCameraTrack,
-                                     options.publishSecondaryCameraTrack,
-                                     options.publishScreenTrack,
-                                     options.publishSecondaryScreenTrack,
-                                     options.publishCustomAudioTrack,
-                                     options.publishCustomVideoTrack)
+                                     ctypes.c_char_p(optionsJson),
+                                     self.pRtcEngienEventHandlerEx)
         return ret
 
     @APITime
     def updateChannelMediaOptionsEx(self, connection: RtcConnection, options: ChannelMediaOptions) -> int:
         channelName = connection.channelId.encode('utf-8') if connection.channelId != None else 0
-        options.convertNone()
+        optionsJson = options.toJsonStr().encode('utf-8')
         ret = self.dll.updateChannelMediaOptionsEx(self.pRtcEngine,
                                                    ctypes.c_char_p(channelName),
                                                    connection.localUid,
-                                                   options.channelProfile,
-                                                   options.clientRole,
-                                                   options.autoSubscribeAudio,
-                                                   options.autoSubscribeVideo,
-                                                   options.publishAudioTrack,
-                                                   options.publishCameraTrack,
-                                                   options.publishSecondaryCameraTrack,
-                                                   options.publishScreenTrack,
-                                                   options.publishSecondaryScreenTrack,
-                                                   options.publishCustomAudioTrack,
-                                                   options.publishCustomVideoTrack)
+                                                   ctypes.c_char_p(optionsJson))
         return ret
 
     @APITime

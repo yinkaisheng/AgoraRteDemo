@@ -206,7 +206,7 @@ def onSnapshotTaken(self, userData: str, callbackTimeSinceEpoch: int, funcName: 
         self.snapCount += 1
         subprocess.Popen(jsInfo['filePath'], shell=True)
         if self.snapCount < 2:
-            self.ret = self.rtcEngine.takeSnapshot(uid=0, filePath=r'snap2.jpg', rect=(0.0, 0.0, 0.75, 0.75))
+            self.ret = self.rtcEngine.takeSnapshot(uid=0, filePath=f'snap{self.snapCount}.jpg', rect=(0.0, 0.0, 0.75, 0.75))
 MainWindow.onSnapshotTaken = onSnapshotTaken
 self.rtcEngineEventHandler['onSnapshotTaken'] = self.onSnapshotTaken
 
@@ -238,14 +238,14 @@ code=
 
 def onServerSuperResolutionResult(self, userData: str, callbackTimeSinceEpoch: int, funcName: str, jsStr: str, jsInfo: Dict) -> None:
     self.codeDlg.outputEdit.appendPlainText(f'{funcName}: {jsStr}\n')
-    if jsInfo['httpStatusCode'] == 200 and jsInfo['imagePath']:
-        subprocess.Popen(jsInfo['imagePath'], shell=True)
+    if jsInfo['httpStatusCode'] == 200 and jsInfo['dstImagePath']:
+        subprocess.Popen(jsInfo['dstImagePath'], shell=True)
 MainWindow.onServerSuperResolutionResult = onServerSuperResolutionResult
 self.rtcEngineEventHandler['onServerSuperResolutionResult'] = self.onServerSuperResolutionResult
 
 token = self.configJson['tokenUid']
 token = 'fakeToken'
-self.ret = self.rtcEngine.startServerSuperResolution(token, r'snap.jpg', 2.0, 5)
+self.ret = self.rtcEngine.startServerSuperResolution(token, r'snap.jpg', r'snap-after-sr.jpg', 2.0, 5)
 
 ----boundary----
 
@@ -256,16 +256,17 @@ code=
 def onSnapshotTaken(self, userData: str, callbackTimeSinceEpoch: int, funcName: str, jsStr: str, jsInfo: Dict) -> None:
     self.codeDlg.outputEdit.appendPlainText(f'{funcName}: {jsStr}\n')
     if jsInfo['errCode'] == 0 and jsInfo['filePath']:
+        subprocess.Popen(jsInfo['filePath'], shell=True)
         token = self.configJson['tokenUid']
         token = 'fakeToken'
-        self.rtcEngine.startServerSuperResolution(token, imagePath=jsInfo['filePath'], scale=2.0, timeoutSeconds=5)
+        self.rtcEngine.startServerSuperResolution(token, srcImagePath=jsInfo['filePath'], dstImagePath=r'snap-after-sr.jpg', scale=2.0, timeoutSeconds=5)
 MainWindow.onSnapshotTaken = onSnapshotTaken
 self.rtcEngineEventHandler['onSnapshotTaken'] = self.onSnapshotTaken
 
 def onServerSuperResolutionResult(self, userData: str, callbackTimeSinceEpoch: int, funcName: str, jsStr: str, jsInfo: Dict) -> None:
     self.codeDlg.outputEdit.appendPlainText(f'{funcName}: {jsStr}\n')
-    if jsInfo['httpStatusCode'] == 200 and jsInfo['imagePath']:
-        subprocess.Popen(jsInfo['imagePath'], shell=True)
+    if jsInfo['httpStatusCode'] == 200 and jsInfo['dstImagePath']:
+        subprocess.Popen(jsInfo['dstImagePath'], shell=True)
 MainWindow.onServerSuperResolutionResult = onServerSuperResolutionResult
 self.rtcEngineEventHandler['onServerSuperResolutionResult'] = self.onServerSuperResolutionResult
 
