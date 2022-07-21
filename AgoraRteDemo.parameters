@@ -23,10 +23,11 @@ json=
 
 ----boundary----
 
-name=engine.video.enable_hw_encoder
+name=engine.video.enable_hw_encoder/decoder
 json=
 {
-    "engine.video.enable_hw_encoder": true
+    "engine.video.enable_hw_encoder": true,
+    "engine.video.enable_hw_decoder": true
 }
 
 ----boundary----
