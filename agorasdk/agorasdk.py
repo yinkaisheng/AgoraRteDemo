@@ -1042,7 +1042,7 @@ class RtcEngine:
     @APITime
     def takeSnapshot(self, uid: int, filePath: str, rect: Tuple[float, float, float, float] = None) -> int:
         filePath = filePath.encode('utf-8')
-        if SdkVersion.startswith('3.6.200.104'):
+        if SdkVersion >= '3.6.200.105' and SdkVersion <= '3.6.200.109':
             ret = self.dll.takeSnapshot(self.pRtcEngine, uid, ctypes.c_char_p(filePath),
                                         ctypes.c_float(rect[0]), ctypes.c_float(rect[1]), ctypes.c_float(rect[2]), ctypes.c_float(rect[3]))
             return ret
@@ -1056,7 +1056,7 @@ class RtcEngine:
     @APITime
     def takeSnapshotEx(self, uid: int, filePath: str, rect: Tuple[float, float, float, float], connection: RtcConnection) -> int:
         filePath = filePath.encode('utf-8')
-        if SdkVersion.startswith('3.6.200.104'):
+        if SdkVersion >= '3.6.200.105' and SdkVersion <= '3.6.200.109':
             channel = connection.channelId.encode('utf-8')
             ret = self.dll.takeSnapshotEx(self.pRtcEngine, uid, ctypes.c_char_p(filePath),
                                           ctypes.c_float(rect[0]), ctypes.c_float(rect[1]), ctypes.c_float(rect[2]), ctypes.c_float(rect[3]),
@@ -1068,7 +1068,7 @@ class RtcEngine:
 
     @APITime
     def startServerSuperResolution(self, token: str, srcImagePath: str, dstImagePath: str, scale: float, timeoutSeconds: int) -> int:
-        if not SdkVersion.startswith('3.6.200.10'):
+        if SdkVersion >= '3.6.200.105' and SdkVersion <= '3.6.200.109':
             log.error(f'{SdkVersion} does not support this API')
         token = token.encode('utf-8')
         srcImagePath = srcImagePath.encode('utf-8')

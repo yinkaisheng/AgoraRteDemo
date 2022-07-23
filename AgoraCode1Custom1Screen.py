@@ -70,8 +70,8 @@ def camera2Screen1Custom1Test(self) -> None:
     options = agsdk.ChannelMediaOptions()
     options.channelProfile = agsdk.ChannelProfile.LiveBroadcasting
     options.clientRoleType = agsdk.ClientRole.Broadcaster
-    options.autoSubscribeAudio = False
-    options.autoSubscribeVideo = False
+    options.autoSubscribeAudio = True
+    options.autoSubscribeVideo = True
     options.publishAudioTrack = False
     options.publishCameraTrack = False
     options.publishCustomVideoTrack = True

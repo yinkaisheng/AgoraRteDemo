@@ -1333,7 +1333,7 @@ class MainWindow(QMainWindow, astask.AsyncTask):
         stopPreviewButton.clicked.connect(self.onClickStopPreview)
         hLayout.addWidget(stopPreviewButton)
         self.trapezoidCorrectionButton = QPushButton('TrapezoidCorrection')
-        self.trapezoidCorrectionButton.setToolTip('SDK Version must be 3.6.200.10[012]')
+        self.trapezoidCorrectionButton.setToolTip('SDK Version must be 3.6.200.10x')
         self.trapezoidCorrectionButton.clicked.connect(self.onClickTrapezoidCorrection)
         hLayout.addWidget(self.trapezoidCorrectionButton)
         hLayout.addStretch(1)
