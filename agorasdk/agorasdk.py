@@ -1069,12 +1069,13 @@ class RtcEngine:
     @APITime
     def startServerSuperResolution(self, token: str, srcImagePath: str, dstImagePath: str, scale: float, timeoutSeconds: int) -> int:
         if SdkVersion >= '3.6.200.105' and SdkVersion <= '3.6.200.109':
-            log.error(f'{SdkVersion} does not support this API')
-        token = token.encode('utf-8')
-        srcImagePath = srcImagePath.encode('utf-8')
-        dstImagePath = dstImagePath.encode('utf-8')
-        ret = self.dll.startServerSuperResolution(self.pRtcEngine, ctypes.c_char_p(token), ctypes.c_char_p(srcImagePath), ctypes.c_char_p(dstImagePath), ctypes.c_float(scale), timeoutSeconds)
-        return ret
+            token = token.encode('utf-8')
+            srcImagePath = srcImagePath.encode('utf-8')
+            dstImagePath = dstImagePath.encode('utf-8')
+            ret = self.dll.startServerSuperResolution(self.pRtcEngine, ctypes.c_char_p(token), ctypes.c_char_p(srcImagePath), ctypes.c_char_p(dstImagePath), ctypes.c_float(scale), timeoutSeconds)
+            return ret
+        log.error(f'{SdkVersion} does not support this API')
+        return -1
 
     @APITime
     def setContentInspect(self, enable: bool, cloudWork: bool) -> int:
