@@ -1,6 +1,6 @@
 # AgoraRteDemo
 
-The portable app that compiled by nuitka.
+The portable app.
 [http://yinkaisheng.ysepan.com](http://yinkaisheng.ysepan.com)
 ![Download](images/download.jpg)
 
