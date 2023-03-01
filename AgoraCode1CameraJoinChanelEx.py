@@ -12,7 +12,7 @@ def joinChannelExTest(self) -> None:
     if self.rtcEngine is None:
         self.rtcEngine = agsdk.RtcEngine()
     version, build = self.rtcEngine.getVersion()
-    self.setWindowTitle(f'{DemoTile} Version={version}, Build={build}, SdkDir={agsdk.agorasdk.SdkBinDir}')
+    self.setWindowTitle(f'{DemoTile} Version={version}, Build={build}, SdkDir={agsdk.agorasdk.SdkBinDir}, pid={os.getpid()}')
     appName = self.configJson['appNameList'][self.appNameComBox.currentIndex()]['appName']
     appId = self.configJson['appNameList'][self.appNameComBox.currentIndex()]['appId']
     if appId == '00000000000000000000000000000000':

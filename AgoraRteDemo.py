@@ -885,8 +885,8 @@ class MainWindow(QMainWindow, astask.AsyncTask):
         self.videoConfigEx = agsdk.VideoEncoderConfiguration()
         self.defaultRenderMode = self.configJson["defaultRenderMode"]
         self.defaultBrightnessCorrectionMode = self.configJson["defaultBrightnessCorrectionMode"]
-        self.autoSubscribeAudioEx = 0
-        self.autoSubscribeVideoEx = 1
+        self.autoSubscribeAudioEx = False
+        self.autoSubscribeVideoEx = True
         self.isPushEx = False
         self.loadedExtensions = []
         # agsdk.chooseSdkBinDir('binx86_3.5.209')
@@ -934,7 +934,7 @@ class MainWindow(QMainWindow, astask.AsyncTask):
         return exec(code)
 
     def createUI(self) -> None:
-        self.setWindowTitle(DemoTile)
+        self.setWindowTitle(f'{DemoTile} pid={os.getpid()}')
         self.setWindowIcon(QIcon(IcoPath))
         self.resize(1280, 600)
         self.intValidator = QIntValidator()
@@ -1211,7 +1211,7 @@ class MainWindow(QMainWindow, astask.AsyncTask):
         sourceTypeLabel = QLabel('SourceType:')
         hLayout.addWidget(sourceTypeLabel)
         self.sourceTypeCombox = QComboBox()
-        self.sourceTypeCombox.addItems(['Primary', 'Secondary', 'Screen', 'ScreenSecondary', 'Custom'])
+        self.sourceTypeCombox.addItems(['Primary 0', 'Secondary 1', 'Screen 2', 'ScreenSecondary 3', 'Custom 4'])
         self.sourceTypeCombox.currentIndexChanged.connect(self.onSourceTypeIndexChanged)
         hLayout.addWidget(self.sourceTypeCombox)
         hLayout.addStretch(1)
@@ -2002,7 +2002,7 @@ class MainWindow(QMainWindow, astask.AsyncTask):
 
     def onSourceTypeIndexChanged(self, currentIndex: int) -> None:
         #['Primary', 'Secondary', 'Screen', 'ScreenSecondary', 'Custom']
-        curText = self.sourceTypeCombox.currentText()
+        curText = self.sourceTypeCombox.currentText().split()[0]
         if curText == 'Primary':
             self.curVideoSourceType = agsdk.VideoSourceType.CameraPrimary
             self.curMediaSourceType = agsdk.MediaSourceType.PrimaryCameraSource
@@ -2036,7 +2036,7 @@ class MainWindow(QMainWindow, astask.AsyncTask):
         if self.rtcEngine is None:
             self.rtcEngine = agsdk.RtcEngine()
         version, build = self.rtcEngine.getVersion()
-        self.setWindowTitle(f'{DemoTile} Version={version}, Build={build}, SdkDir={agsdk.agorasdk.SdkBinDir}')
+        self.setWindowTitle(f'{DemoTile} Version={version}, Build={build}, SdkDir={agsdk.agorasdk.SdkBinDir}, pid={os.getpid()}')
         appName = self.configJson['appNameList'][self.appNameComBox.currentIndex()]['appName']
         appId = self.configJson['appNameList'][self.appNameComBox.currentIndex()]['appId']
         if appId == '00000000000000000000000000000000':
@@ -2451,24 +2451,30 @@ class MainWindow(QMainWindow, astask.AsyncTask):
             self.uidEdit.setText(str(uid))
         token = self.tokenEdit.text().strip()
         info = self.infoEdit.text().strip()
-        if self.curVideoSourceType == agsdk.VideoSourceType.Custom:
+        options = agsdk.ChannelMediaOptions()
+        options.channelProfile = agsdk.ChannelProfile(int(self.channelProfileCombox.currentText()[-1]))
+        options.clientRoleType = agsdk.ClientRole(int(self.clientRoleCombox.currentText()[-1]))
+        options.autoSubscribeAudio = True
+        options.autoSubscribeVideo = True
+        options.publishAudioTrack = True
+        if self.curVideoSourceType == agsdk.VideoSourceType.CameraPrimary:
+            options.publishCameraTrack = True
+        elif self.curVideoSourceType == agsdk.VideoSourceType.CameraSecondary:
+            options.publishSecondaryCameraTrack = True
+        elif self.curVideoSourceType == agsdk.VideoSourceType.Screen:
+            options.publishScreenTrack = True
+        elif self.curVideoSourceType == agsdk.VideoSourceType.ScreenSecondary:
+            options.publishSecondaryCameraTrack = True
+        elif self.curVideoSourceType == agsdk.VideoSourceType.Custom:
             self.rtcEngine.setExternalVideoSource(True)
             self.isPushEx = False
             if self.pushVideoFrameFile and self.pushVideoFrameFile.fobj:
                 self.pushTimer.start(1000 // self.pushVideoFrameFile.fps)
             else:
                 self.pushTimer.start(1000 // self.videoConfig.frameRate)
-            options = agsdk.ChannelMediaOptions()
-            options.channelProfile = agsdk.ChannelProfile.LiveBroadcasting
-            options.clientRoleType = agsdk.ClientRole.Broadcaster
-            options.autoSubscribeAudio = True
-            options.autoSubscribeVideo = True
-            options.publishAudioTrack = True
             options.publishCustomVideoTrack = True
-            self.channelOptions = options
-            ret = self.rtcEngine.joinChannelWithOptions(self.channelName, uid, token, options)
-        else:
-            ret = self.rtcEngine.joinChannel(self.channelName, uid, token, info)
+        self.channelOptions = options
+        ret = self.rtcEngine.joinChannelWithOptions(self.channelName, uid, token, options)
         self.checkSDKResult(ret)
         self.joined = True
         self.localUids.append(uid)
@@ -2526,7 +2532,7 @@ class MainWindow(QMainWindow, astask.AsyncTask):
             self.rtcEngine.muteRemoteVideoStream(uid, True)
         token = self.tokenEdit.text().strip()
         #info = self.infoEdit.text().strip()
-        self.autoSubscribeVideoEx = int(self.channelName != self.channelNameEx)
+        self.autoSubscribeVideoEx = self.channelName != self.channelNameEx
         options = agsdk.ChannelMediaOptions()
         options.channelProfile = agsdk.ChannelProfile.LiveBroadcasting
         options.clientRoleType = agsdk.ClientRole.Broadcaster

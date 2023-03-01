@@ -13,7 +13,7 @@ def screen1Camera1Test(self) -> None:
     if self.rtcEngine is None:
         self.rtcEngine = agsdk.RtcEngine()
     version, build = self.rtcEngine.getVersion()
-    self.setWindowTitle(f'{DemoTile} Version={version}, Build={build}, SdkDir={agsdk.agorasdk.SdkBinDir}')
+    self.setWindowTitle(f'{DemoTile} Version={version}, Build={build}, SdkDir={agsdk.agorasdk.SdkBinDir}, pid={os.getpid()}')
     appName = self.configJson['appNameList'][self.appNameComBox.currentIndex()]['appName']
     appId = self.configJson['appNameList'][self.appNameComBox.currentIndex()]['appId']
     if appId == '00000000000000000000000000000000':
@@ -70,10 +70,10 @@ def screen1Camera1Test(self) -> None:
     ret = self.rtcEngine.startPreview(sourceType)
     self.checkSDKResult(ret)
 
-    # videoConfig = agsdk.VideoEncoderConfiguration(width=640, height=360, frameRate=15, bitrate=0, codecType=VideoCodec.H264,
-                                                  # degradationPreference=DegradationPreference.MaintainQuality,
-                                                  # minBitrate=-1, mirrorMode=VideoMirrorMode.Disabled,
-                                                  # orientationMode=OrientationMode.Adaptive)
+    # videoConfig = agsdk.VideoEncoderConfiguration(width=640, height=360, frameRate=15, bitrate=0, codecType=agsdk.VideoCodec.H264,
+                                                  # degradationPreference=agsdk.DegradationPreference.MaintainQuality,
+                                                  # minBitrate=-1, mirrorMode=agsdk.VideoMirrorMode.Disabled,
+                                                  # orientationMode=agsdk.OrientationMode.Adaptive)
     # ret = self.rtcEngine.setVideoEncoderConfiguration(videoConfig)
     # self.checkSDKResult(ret)
 
@@ -166,10 +166,10 @@ def screen1Camera1Test(self) -> None:
     self.viewUsingIndex.add(viewIndex)
     self.viewIndex2EncoderMirrorMode[viewIndex] = videoCanvas.mirrorMode
 
-    #videoConfig = agsdk.VideoEncoderConfiguration(width=640, height=360, frameRate=15, bitrate=0, codecType=VideoCodec.H264,
-                                                  #degradationPreference=DegradationPreference.MaintainQuality,
-                                                  #minBitrate=-1, mirrorMode=VideoMirrorMode.Disabled,
-                                                  #orientationMode=OrientationMode.Adaptive)
+    #videoConfig = agsdk.VideoEncoderConfiguration(width=640, height=360, frameRate=15, bitrate=0, codecType=agsdk.VideoCodec.H264,
+                                                  #degradationPreference=agsdk.DegradationPreference.MaintainQuality,
+                                                  #minBitrate=-1, mirrorMode=agsdk.VideoMirrorMode.Disabled,
+                                                  #orientationMode=agsdk.OrientationMode.Adaptive)
     #ret = self.rtcEngine.setVideoEncoderConfiguration(videoConfig)
     #self.checkSDKResult(ret)
 

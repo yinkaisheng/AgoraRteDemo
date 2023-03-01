@@ -1,6 +1,6 @@
 def audienceTest(self) -> None:
-    channelName = '0623-15'
-    uid = 3334
+    channelName = 'sdktest'
+    uid = 0
     token = ''
     info = ''
     self.autoSubscribeVideoEx = False # ex channel don't call setupRemoteVideo
@@ -8,7 +8,7 @@ def audienceTest(self) -> None:
     if self.rtcEngine is None:
         self.rtcEngine = agsdk.RtcEngine()
     version, build = self.rtcEngine.getVersion()
-    self.setWindowTitle(f'{DemoTile} Version={version}, Build={build}, SdkDir={agsdk.agorasdk.SdkBinDir}')
+    self.setWindowTitle(f'{DemoTile} Version={version}, Build={build}, SdkDir={agsdk.agorasdk.SdkBinDir}, pid={os.getpid()}')
     appName = self.configJson['appNameList'][self.appNameComBox.currentIndex()]['appName']
     appId = self.configJson['appNameList'][self.appNameComBox.currentIndex()]['appId']
     if appId == '00000000000000000000000000000000':

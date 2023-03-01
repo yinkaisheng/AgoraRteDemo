@@ -18,7 +18,7 @@ ExePath = os.path.abspath(sys.argv[0])
 ExeDir, ExeNameWithExt = os.path.split(ExePath)
 ExeNameNoExt = os.path.splitext(ExeNameWithExt)[0]
 os.chdir(ExeDir)
-LogDir = os.path.join(ExeDir, 'agsdklog')
+LogDir = os.path.join(ExeDir, f'agsdklog/{os.getpid()}')
 if os.path.exists('Lib') and not os.path.exists('agorasdk'):
     SdkDir = os.path.join('Lib', 'agorasdk')
 else:
@@ -358,6 +358,15 @@ class ChannelMediaOptions():
         self.audienceLatencyLevel = None
         self.defaultVideoStreamType = None
 
+        self.startPreview = None    # >=3.8.202 and < 3.8.209
+        # >= 3.8.202
+        self.publishCustomAudioSourceId = None
+        self.publishDirectCustomAudioTrack = None
+        self.enableBuiltInMediaEncryption = None
+        self.publishRhythmPlayerTrack = None
+        self.isInteractiveAudience = None
+        self.isInteractiveAudience = None
+
     def toJsonStr(self) -> str:
         opt = {}
         for key in self.__dict__:
@@ -590,14 +599,14 @@ class RtcEngine:
     def __init__(self):
         self.dll = _DllClient.instance().dll
         self.callback = None
-        self.printCallback = False
+        self.printCallback = 1
         self.eventHandlerUserData = {}  # Dict[int, str]
         self.rtcEngine = self.dll.createRtcEngine()
         self.pRtcEngine = ctypes.c_void_p(self.rtcEngine)
         self.rtcEngineEventHandler = self.dll.createRtcEngineEventHandler()
         self.pRtcEngienEventHandler = ctypes.c_void_p(self.rtcEngineEventHandler)
         self.rtcEngineEventHandlerEx = self.dll.createRtcEngineEventHandler()
-        self.pRtcEngienEventHandlerEx = ctypes.c_void_p(self.rtcEngineEventHandlerEx)
+        self.pRtcEngineEventHandlerEx = ctypes.c_void_p(self.rtcEngineEventHandlerEx)
         version, build = self.getVersion()
         lineLen = 60
         log.info('\n\n{0}\n|{1:^{middleLen}}|\n{0}\n'.format(
@@ -630,11 +639,11 @@ class RtcEngine:
             self.rtcEngineEventHandler = 0
             self.pRtcEngienEventHandler = None
         if self.rtcEngineEventHandlerEx:
-            self.dll.releaseRtcEngineEventHandler(self.pRtcEngienEventHandlerEx)
+            self.dll.releaseRtcEngineEventHandler(self.pRtcEngineEventHandlerEx)
             if self.rtcEngineEventHandlerEx in self.eventHandlerUserData:
                 del self.eventHandlerUserData[self.rtcEngineEventHandlerEx]
             self.rtcEngineEventHandlerEx = 0
-            self.pRtcEngienEventHandlerEx = None
+            self.pRtcEngineEventHandlerEx = None
 
     def getVersion(self) -> Tuple[str, int]:
         build = ctypes.c_int(0)
@@ -653,7 +662,7 @@ class RtcEngine:
         self.dll.setRtcEngineEventCallback(self.pRtcEngienEventHandler, self.eventCFuncCallback)
 
         self.eventHandlerUserData[self.rtcEngineEventHandlerEx] = f'{userData}Ex'
-        self.dll.setRtcEngineEventCallback(self.pRtcEngienEventHandlerEx, self.eventCFuncCallback)
+        self.dll.setRtcEngineEventCallback(self.pRtcEngineEventHandlerEx, self.eventCFuncCallback)
 
         appId = context.appId.encode('utf-8')
         logPath = context.logConfig.logPath.encode('utf-8')
@@ -1226,7 +1235,7 @@ class RtcEngine:
                                                     ctypes.c_char_p(userAccount),
                                                     ctypes.c_char_p(token),
                                                     ctypes.c_char_p(optionsJson),
-                                                    self.pRtcEngienEventHandlerEx)
+                                                    self.pRtcEngineEventHandlerEx)
         return ret
 
     @APITime
@@ -1244,7 +1253,7 @@ class RtcEngine:
                                      connection.localUid,
                                      ctypes.c_char_p(token),
                                      ctypes.c_char_p(optionsJson),
-                                     self.pRtcEngienEventHandlerEx)
+                                     self.pRtcEngineEventHandlerEx)
         return ret
 
     @APITime
